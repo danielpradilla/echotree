@@ -1,6 +1,6 @@
 # EchoTree 🌲
 
-> If an article is read but never shared, did it really happen?
+> If an article is read but never shared, was it ever read?
 
 EchoTree is a small, self-hosted RSS reader and social publishing console.
 
