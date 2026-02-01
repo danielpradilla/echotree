@@ -1,0 +1,80 @@
+{% extends "layout.twig" %}
+
+{% block content %}
+  <style>
+    .reader {
+      display: flex;
+      gap: 24px;
+    }
+    .reader__content {
+      flex: 2;
+      min-width: 0;
+    }
+    .reader__sidebar {
+      flex: 1;
+      min-width: 260px;
+    }
+    .reader__meta {
+      margin-bottom: 16px;
+    }
+    .reader__content article {
+      line-height: 1.6;
+    }
+    @media (max-width: 900px) {
+      .reader {
+        flex-direction: column;
+      }
+    }
+  </style>
+
+  <div class="reader">
+    <div class="reader__content">
+      <div class="reader__meta">
+        <p class="muted">{{ article.feed_name }} • {{ article.published_at ?: article.created_at }}</p>
+        <p><a href="{{ article.url }}" target="_blank" rel="noopener">Open original</a></p>
+      </div>
+      <article>
+        {{ article.content_html|raw }}
+      </article>
+    </div>
+    <aside class="reader__sidebar">
+      <div class="card">
+        <h2>Compose</h2>
+        {% if saved %}
+          <p class="muted">Post scheduled.</p>
+        {% elseif error %}
+          <p class="muted">Comment, schedule time, and at least one account are required.</p>
+        {% endif %}
+        <form method="post" action="/posts">
+          <input type="hidden" name="_csrf" value="{{ csrf }}" />
+          <input type="hidden" name="article_id" value="{{ article.id }}" />
+          <label>
+            Comment
+            <textarea name="comment" rows="6" style="width: 100%;"></textarea>
+          </label>
+          <br /><br />
+          <label>
+            Schedule
+            <input type="datetime-local" name="scheduled_at" />
+          </label>
+          <br /><br />
+          <fieldset style="border: 0; padding: 0; margin: 0;">
+            <legend>Accounts</legend>
+            {% if accounts|length == 0 %}
+              <p class="muted">No active accounts yet.</p>
+            {% else %}
+              {% for account in accounts %}
+                <label style="display: block;">
+                  <input type="checkbox" name="account_ids[]" value="{{ account.id }}" />
+                  {{ account.platform }} · {{ account.display_name }} ({{ account.handle }})
+                </label>
+              {% endfor %}
+            {% endif %}
+          </fieldset>
+          <br />
+          <button type="submit">Save draft</button>
+        </form>
+      </div>
+    </aside>
+  </div>
+{% endblock %}

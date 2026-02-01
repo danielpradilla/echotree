@@ -1,91 +1,93 @@
 # EchoTree 🌲
 
-> If an article is read but never shared, was it ever read?
+Personal RSS → Social Publishing Console.
 
-EchoTree is a small, self-hosted RSS reader and social publishing console.
+EchoTree is a calm, self-hosted tool for reading articles and turning them into scheduled social posts. It is intentionally small, single-user, and boring.
 
-It quietly collects articles from your feeds, lets you read them distraction-free,
-add a short thought, and schedule them to be shared across your social accounts.
+## Local Development
 
-Each post is an **echo** — proof the tree fell.
-
-This is a personal tool, not a platform.
-
----
-
-## Philosophy
-
-EchoTree is intentionally boring software.
-
-Not a startup.  
-Not multi-tenant.  
-Not real-time.  
-Not microservices.
-
-Just:
-
-Read → Think → Echo
-
-Design principles:
-
-- single user only
-- simple > clever
-- local data ownership
-- minimal dependencies
-- cron jobs instead of workers
-- server-rendered HTML
-- SQLite instead of a database server
-- easy to deploy anywhere
-
-If something feels complex, it's probably the wrong solution.
-
----
-
-## Features
-
-- RSS feed management
-- Full article extraction (reader mode)
-- Optional AI summaries (on demand)
-- Compose short commentary
-- Multiple accounts per network
-- Schedule posts
-- Automatic publishing via cron
-- Per-account rate limit (1 post / 10 minutes)
-- Self-hosted
-
----
-
-## Tech Stack
-
-Backend:
-- Python 3.11+
-- FastAPI
-- SQLAlchemy
-- Jinja templates
-
-Storage:
-- SQLite
-
-Extraction:
-- feedparser
-- trafilatura
-
-Hosting:
-- DreamHost shared hosting
-- Passenger (WSGI)
-- cron jobs
-
-No Docker.  
-No Celery.  
-No Redis.  
-No frontend framework.
-
----
-
-## Installation (local dev)
-
-### 1. Clone
+### 1) Install dependencies
 
 ```bash
-git clone <your-repo>
-cd echotree
+composer install
+```
+
+### 2) Run the app
+
+```bash
+php -S localhost:8000 -t public
+```
+
+Open http://localhost:8000
+
+## Getting Started (quick)
+
+1) Set your login password:
+
+```bash
+php scripts/set_password.php <username>
+```
+
+2) Start the server and log in (the database auto-initializes on first run):
+
+```bash
+php -S localhost:8000 -t public
+```
+
+3) Add feeds at `/feeds`, then run the fetcher:
+
+```bash
+php scripts/fetch_feeds.php
+```
+
+To refresh existing articles (re-extract content), run:
+
+```bash
+php scripts/fetch_feeds.php --refresh
+```
+
+## Notes
+
+- This is a minimal Slim + Twig scaffold.
+- The database auto-initializes from `scripts/schema.sql` on first run.
+- No Docker, no background workers, no queues.
+- Set the login password via `php scripts/set_password.php <username>`.
+
+## Auth
+
+- Login at `/login` and logout at `/logout`.
+- All pages require a valid session.
+
+## Cron (publisher)
+
+Example cron entry (runs every minute):
+
+```bash
+* * * * * cd /path/to/echotree && /usr/bin/php scripts/publisher.php >> logs/publisher.log 2>&1
+```
+
+## Cron (feed fetcher)
+
+Example cron entry (runs every 5 minutes):
+
+```bash
+*/5 * * * * cd /path/to/echotree && /usr/bin/php scripts/fetch_feeds.php >> logs/fetch_feeds.log 2>&1
+```
+
+## Environment Variables
+
+- `ECHOTREE_SECRET_KEY`: base64-encoded 32-byte key for encrypting OAuth tokens.
+- `ECHOTREE_MASTODON_BASE_URL`: base URL for your Mastodon instance (e.g., `https://mastodon.social`).
+- `ECHOTREE_BLUESKY_PDS`: Bluesky PDS base URL (defaults to `https://bsky.social`).
+- `ECHOTREE_LINKEDIN_AUTHOR_URN`: LinkedIn author URN for posting (e.g., `urn:li:person:...`).
+- `OPENAI_API_KEY`: required for on-demand summaries.
+
+## Summaries
+
+- POST `/articles/{id}/summary` returns a cached summary or generates one on demand.
+- Summaries are stored in `articles.summary` and generated from the first ~12k chars of `content_text`.
+
+## Security Notes
+
+- CSRF protection is enforced on all POST routes.
+- OAuth tokens are encrypted at rest using `ECHOTREE_SECRET_KEY`.

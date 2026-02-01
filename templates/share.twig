@@ -1,0 +1,106 @@
+{% extends "layout.twig" %}
+
+{% block content %}
+  <style>
+    .share {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    .share__viewer {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .share__iframe {
+      width: 100%;
+      height: 60vh;
+      border: 1px solid #eadfce;
+      border-radius: 10px;
+      background: #fffaf2;
+    }
+  </style>
+
+  <div class="card share">
+    <form method="post" action="/share">
+      <input type="hidden" name="_csrf" value="{{ csrf }}" />
+      <label>
+        Paste a link
+        <input type="url" name="url" style="width: 100%;" placeholder="https://example.com/article" required />
+      </label>
+      <br /><br />
+      <button type="submit">Preview</button>
+      {% if error %}
+        <span class="muted" style="margin-left: 8px;">{{ error }}</span>
+      {% endif %}
+    </form>
+
+    <div class="share__viewer">
+      {% if selected %}
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <strong>{{ selected.title }}</strong>
+          </div>
+          <div>
+            {% if mode == 'reader' %}
+              <span class="muted">Reader</span>
+              <span class="muted" style="margin: 0 6px;">·</span>
+              <a href="/share?selected={{ selected.id }}&mode=original">Original</a>
+            {% else %}
+              <a href="/share?selected={{ selected.id }}&mode=reader">Reader</a>
+              <span class="muted" style="margin: 0 6px;">·</span>
+              <span class="muted">Original</span>
+            {% endif %}
+            <span class="muted" style="margin: 0 6px;">·</span>
+            <a href="{{ selected.url }}" target="_blank" rel="noopener">Open in new tab</a>
+          </div>
+        </div>
+
+        {% if mode == 'original' %}
+          <iframe class="share__iframe" src="{{ selected.url }}" title="{{ selected.title }}"></iframe>
+        {% else %}
+          <iframe class="share__iframe" src="/articles/{{ selected.id }}/embed" title="{{ selected.title }}"></iframe>
+        {% endif %}
+
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <strong>Schedule</strong>
+          </div>
+          <form method="post" action="/posts">
+            <input type="hidden" name="_csrf" value="{{ csrf }}" />
+            <input type="hidden" name="article_id" value="{{ selected.id }}" />
+            <label>
+              Comment
+              <textarea name="comment" rows="4" style="width: 100%;"></textarea>
+            </label>
+            <br /><br />
+            <label>
+              Schedule
+              <input type="datetime-local" name="scheduled_at" />
+            </label>
+            <br /><br />
+            <fieldset style="border: 0; padding: 0; margin: 0;">
+              <legend>Accounts</legend>
+              {% if accounts|length == 0 %}
+                <p class="muted">No active accounts yet.</p>
+              {% else %}
+                {% for account in accounts %}
+                  <label style="display: block;">
+                    <input type="checkbox" name="account_ids[]" value="{{ account.id }}" />
+                    {{ account.platform }} · {{ account.display_name }} ({{ account.handle }})
+                  </label>
+                {% endfor %}
+              {% endif %}
+            </fieldset>
+            <br />
+            <button type="submit">Schedule post</button>
+          </form>
+        </div>
+      {% else %}
+        <div class="muted" style="padding: 24px; border: 1px dashed #eadfce; border-radius: 10px;">
+          Paste a link above to preview and schedule.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

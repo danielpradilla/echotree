@@ -1,0 +1,46 @@
+{% extends "layout.twig" %}
+
+{% block content %}
+  <div class="card">
+    <div style="display: flex; justify-content: flex-end; align-items: center;">
+      <a href="/accounts/new">Add account</a>
+    </div>
+
+    {% if accounts|length == 0 %}
+      <p class="muted">No accounts yet.</p>
+    {% else %}
+      <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+        <thead>
+          <tr>
+            <th style="text-align: left; padding: 8px 4px;">Platform</th>
+            <th style="text-align: left; padding: 8px 4px;">Name</th>
+            <th style="text-align: left; padding: 8px 4px;">Handle</th>
+            <th style="text-align: left; padding: 8px 4px;">Active</th>
+            <th style="text-align: left; padding: 8px 4px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for account in accounts %}
+            <tr>
+              <td style="padding: 8px 4px;">{{ account.platform }}</td>
+              <td style="padding: 8px 4px;">{{ account.display_name }}</td>
+              <td style="padding: 8px 4px;">{{ account.handle }}</td>
+              <td style="padding: 8px 4px;">{{ account.is_active ? 'Yes' : 'No' }}</td>
+              <td style="padding: 8px 4px;">
+                <a href="/accounts/{{ account.id }}/edit">Edit</a>
+                <form method="post" action="/accounts/{{ account.id }}/toggle" style="display: inline; margin-left: 6px;">
+                  <input type="hidden" name="_csrf" value="{{ csrf }}" />
+                  <button type="submit">{{ account.is_active ? 'Disable' : 'Enable' }}</button>
+                </form>
+                <form method="post" action="/accounts/{{ account.id }}/delete" style="display: inline; margin-left: 6px;">
+                  <input type="hidden" name="_csrf" value="{{ csrf }}" />
+                  <button type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
+{% endblock %}

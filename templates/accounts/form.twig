@@ -1,0 +1,39 @@
+{% extends "layout.twig" %}
+
+{% block content %}
+  <div class="card">
+    {% if error %}
+      <p class="muted">{{ error }}</p>
+    {% endif %}
+    <form method="post" action="{{ action }}">
+      <input type="hidden" name="_csrf" value="{{ csrf }}" />
+      <label>
+        Platform
+        <input type="text" name="platform" value="{{ account.platform }}" required />
+      </label>
+      <br /><br />
+      <label>
+        Display name
+        <input type="text" name="display_name" value="{{ account.display_name }}" required />
+      </label>
+      <br /><br />
+      <label>
+        Handle
+        <input type="text" name="handle" value="{{ account.handle }}" required />
+      </label>
+      <br /><br />
+      <label>
+        OAuth token{% if token_optional %} (leave blank to keep existing){% endif %}
+        <input type="password" name="oauth_token" />
+      </label>
+      <br /><br />
+      <label>
+        <input type="checkbox" name="is_active" {% if account.is_active %}checked{% endif %} />
+        Active
+      </label>
+      <br /><br />
+      <button type="submit">Save</button>
+      <a href="/accounts" style="margin-left: 8px;">Cancel</a>
+    </form>
+  </div>
+{% endblock %}

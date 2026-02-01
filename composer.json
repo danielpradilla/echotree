@@ -1,0 +1,15 @@
+{
+  "name": "echotree/echotree",
+  "description": "EchoTree - Personal RSS to Social Publishing Console",
+  "type": "project",
+  "require": {
+    "php": "^8.2",
+    "fivefilters/readability.php": "^2.1",
+    "guzzlehttp/guzzle": "^7.8",
+    "slim/slim": "^4.13",
+    "slim/psr7": "^1.7",
+    "simplepie/simplepie": "^1.8",
+    "slim/twig-view": "^3.4",
+    "twig/twig": "^3.8"
+  }
+}

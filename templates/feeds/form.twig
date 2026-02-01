@@ -1,0 +1,29 @@
+{% extends "layout.twig" %}
+
+{% block content %}
+  <div class="card">
+    {% if error %}
+      <p class="muted">{{ error }}</p>
+    {% endif %}
+    <form method="post" action="{{ action }}">
+      <input type="hidden" name="_csrf" value="{{ csrf }}" />
+      <label>
+        Name
+        <input type="text" name="name" value="{{ feed.name }}" required />
+      </label>
+      <br /><br />
+      <label>
+        URL
+        <input type="url" name="url" value="{{ feed.url }}" required />
+      </label>
+      <br /><br />
+      <label>
+        <input type="checkbox" name="is_active" {% if feed.is_active %}checked{% endif %} />
+        Active
+      </label>
+      <br /><br />
+      <button type="submit">Save</button>
+      <a href="/feeds" style="margin-left: 8px;">Cancel</a>
+    </form>
+  </div>
+{% endblock %}

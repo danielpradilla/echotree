@@ -1,0 +1,171 @@
+{% extends "layout.twig" %}
+
+{% block content %}
+  <style>
+    .inbox {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+    }
+    .inbox__list {
+      border-right: 1px solid #eadfce;
+      padding-right: 12px;
+      max-height: calc(100vh - 220px);
+      overflow: auto;
+    }
+    .inbox__item {
+      padding: 10px 8px;
+      border-bottom: 1px solid #efe4d6;
+    }
+    .inbox__item a { text-decoration: none; }
+    .inbox__item.active { background: #fff7e8; border-radius: 8px; }
+    .inbox__viewer {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 400px;
+    }
+    .inbox__iframe {
+      width: 100%;
+      height: 60vh;
+      border: 1px solid #eadfce;
+      border-radius: 10px;
+      background: #fffaf2;
+    }
+    @media (max-width: 900px) {
+      .inbox { grid-template-columns: 1fr; }
+      .inbox__list { max-height: none; border-right: 0; padding-right: 0; }
+      .inbox__iframe { height: 50vh; }
+    }
+  </style>
+
+  <div class="card">
+    <div class="inbox" style="margin-top: 12px;">
+      <div class="inbox__list">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <form method="get" action="/articles">
+            <label>
+              Feed
+              <select name="feed_id" onchange="this.form.submit()">
+                <option value="">All</option>
+                {% for feed in feeds %}
+                  <option value="{{ feed.id }}" {% if active_feed_id == feed.id %}selected{% endif %}>
+                    {{ feed.name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </label>
+          </form>
+          <form method="post" action="/articles/mark-all-read">
+            <input type="hidden" name="_csrf" value="{{ csrf }}" />
+            {% if active_feed_id %}
+              <input type="hidden" name="feed_id" value="{{ active_feed_id }}" />
+            {% endif %}
+            <button type="submit">Mark all read</button>
+          </form>
+        </div>
+
+        {% if articles|length == 0 %}
+          <p class="muted">No articles yet.</p>
+        {% else %}
+          {% for article in articles %}
+            {% set is_selected = selected and selected.id == article.id %}
+            <div class="inbox__item {% if is_selected %}active{% endif %}">
+              <div>
+                {% if article.is_read %}
+                  <span class="muted">Read</span>
+                {% else %}
+                  <strong>Unread</strong>
+                {% endif %}
+              </div>
+              <div>
+                <a href="/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ article.id }}">
+                  {{ article.title }}
+                </a>
+              </div>
+              <div class="muted" style="font-size: 12px;">
+                {{ article.feed_name }} · {{ article.published_at ?: article.created_at }}
+              </div>
+              <div style="margin-top: 6px;">
+                <a href="{{ article.url }}" target="_blank" rel="noopener">Original</a>
+                <form method="post" action="/articles/{{ article.id }}/toggle-read" style="display: inline; margin-left: 8px;">
+                  <input type="hidden" name="_csrf" value="{{ csrf }}" />
+                  <button type="submit">{{ article.is_read ? 'Mark unread' : 'Mark read' }}</button>
+                </form>
+              </div>
+            </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <div class="inbox__viewer">
+        {% if selected %}
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong>{{ selected.title }}</strong>
+            </div>
+            <div>
+              {% if mode == 'reader' %}
+                <span class="muted">Reader</span>
+                <span class="muted" style="margin: 0 6px;">·</span>
+                <a href="/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode=original">Original</a>
+              {% else %}
+                <a href="/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode=reader">Reader</a>
+                <span class="muted" style="margin: 0 6px;">·</span>
+                <span class="muted">Original</span>
+              {% endif %}
+              <span class="muted" style="margin: 0 6px;">·</span>
+              <a href="{{ selected.url }}" target="_blank" rel="noopener">Open in new tab</a>
+            </div>
+          </div>
+
+          {% if mode == 'original' %}
+            <iframe class="inbox__iframe" src="{{ selected.url }}" title="{{ selected.title }}"></iframe>
+          {% else %}
+            <iframe class="inbox__iframe" src="/articles/{{ selected.id }}/embed" title="{{ selected.title }}"></iframe>
+          {% endif %}
+
+          <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <strong>Schedule</strong>
+              <span class="muted" style="font-size: 12px;">{{ selected.feed_name }}</span>
+            </div>
+            <form method="post" action="/posts">
+              <input type="hidden" name="_csrf" value="{{ csrf }}" />
+              <input type="hidden" name="article_id" value="{{ selected.id }}" />
+              <label>
+                Comment
+                <textarea name="comment" rows="4" style="width: 100%;"></textarea>
+              </label>
+              <br /><br />
+              <label>
+                Schedule
+                <input type="datetime-local" name="scheduled_at" />
+              </label>
+              <br /><br />
+              <fieldset style="border: 0; padding: 0; margin: 0;">
+                <legend>Accounts</legend>
+                {% if accounts|length == 0 %}
+                  <p class="muted">No active accounts yet.</p>
+                {% else %}
+                  {% for account in accounts %}
+                    <label style="display: block;">
+                      <input type="checkbox" name="account_ids[]" value="{{ account.id }}" />
+                      {{ account.platform }} · {{ account.display_name }} ({{ account.handle }})
+                    </label>
+                  {% endfor %}
+                {% endif %}
+              </fieldset>
+              <br />
+              <button type="submit">Schedule post</button>
+            </form>
+          </div>
+        {% else %}
+          <div class="muted" style="padding: 24px; border: 1px dashed #eadfce; border-radius: 10px;">
+            Select an article to preview and schedule.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

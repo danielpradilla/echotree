@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title }}</title>
+    <style>
+      :root {
+        --bg: #f5f2ea;
+        --ink: #1e1a16;
+        --accent: #2f6b4f;
+        --muted: #6e655b;
+        --card: #fffaf2;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+        background: linear-gradient(160deg, #efe8dd 0%, #f8f4ee 60%, #f1eadf 100%);
+        color: var(--ink);
+      }
+      header {
+        border-bottom: 1px solid #e2d7c8;
+        padding: 14px 20px;
+        background: var(--card);
+      }
+      main {
+        max-width: none;
+        margin: 32px 0;
+        padding: 0 28px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid #eadfce;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 8px 24px rgba(31, 26, 20, 0.08);
+      }
+      .accent { color: var(--accent); }
+      .muted { color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: baseline; gap: 10px;">
+          <strong>EchoTree</strong>
+          <span class="muted">/ {{ title }}</span>
+        </div>
+        <nav>
+          <a href="/">Home</a>
+          <span class="muted" style="margin: 0 6px;">·</span>
+          <a href="/feeds">Feeds</a>
+          <span class="muted" style="margin: 0 6px;">·</span>
+          <a href="/articles">Articles</a>
+          <span class="muted" style="margin: 0 6px;">·</span>
+          <a href="/share">Share</a>
+          <span class="muted" style="margin: 0 6px;">·</span>
+          <a href="/accounts">Accounts</a>
+          <span class="muted" style="margin: 0 6px;">·</span>
+          <a href="/logout">Logout</a>
+        </nav>
+      </div>
+    </header>
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>
