@@ -1,0 +1,56 @@
+# =========================
+# Private planning docs
+# =========================
+SPEC.md
+TASKS.md
+ARCHITECTURE.md
+NOTES.md
+
+# =========================
+# Secrets / env
+# =========================
+.env
+.env.*
+*.key
+*.pem
+secrets.*
+tokens.*
+credentials.*
+
+# =========================
+# Database
+# =========================
+*.db
+*.sqlite
+*.sqlite3
+backups/
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+
+# =========================
+# Logs / temp
+# =========================
+*.log
+tmp/
+exports/
+
+# =========================
+# IDE
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# OS junk
+# =========================
+.DS_Store
+Thumbs.db
