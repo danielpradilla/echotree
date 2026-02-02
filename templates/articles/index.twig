@@ -72,19 +72,13 @@
             {% set is_selected = selected and selected.id == article.id %}
             <div class="inbox__item {% if is_selected %}active{% endif %}">
               <div>
-                {% if article.is_read %}
-                  <span class="muted">Read</span>
-                {% else %}
-                  <strong>Unread</strong>
-                {% endif %}
-              </div>
-              <div>
                 <a href="/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ article.id }}">
-                  {{ article.title }}
+                  <strong>{{ article.title }}</strong>
                 </a>
               </div>
               <div class="muted" style="font-size: 12px;">
-                {{ article.feed_name }} · {{ article.published_at ?: article.created_at }}
+                {{ article.feed_name }} · {{ article.published_at ?: article.created_at }} ·
+                {% if article.is_read %}read{% else %}unread{% endif %}
               </div>
               <div style="margin-top: 6px;">
                 <a href="{{ article.url }}" target="_blank" rel="noopener">Original</a>
@@ -111,6 +105,21 @@
           {% elseif status == 'failed' %}
             <div class="card" style="margin-bottom: 12px;">
               <p class="muted">Share failed. Check account settings.</p>
+            </div>
+          {% endif %}
+          {% if post_details %}
+            <div class="card" style="margin-bottom: 12px;">
+              <p class="muted">Per network:</p>
+              <ul style="margin: 8px 0 0 16px;">
+                {% for row in post_details %}
+                  <li class="muted">
+                    {{ row.platform }} — {{ row.status }}
+                    {% if row.status == 'failed' and row.error %}
+                      ({{ row.error }})
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
             </div>
           {% endif %}
           {% if error %}
@@ -174,7 +183,7 @@
               <br /><br />
               <label>
                 Schedule
-                <input type="datetime-local" name="scheduled_at" />
+                <input id="article-schedule" type="datetime-local" name="scheduled_at" />
               </label>
               <br /><br />
               <fieldset style="border: 0; padding: 0; margin: 0;">
@@ -213,6 +222,12 @@
       var csrf = '{{ csrf }}';
       var modeSelect = document.getElementById('article-generate-mode');
       var lengthEl = document.getElementById('article-comment-length');
+      var scheduleInput = document.getElementById('article-schedule');
+
+      if (scheduleInput && !scheduleInput.value) {
+        var now = new Date(Date.now() + 5 * 60 * 1000);
+        scheduleInput.value = now.toISOString().slice(0, 16);
+      }
 
       button.addEventListener('click', function () {
         var articleId = button.getAttribute('data-article-id');

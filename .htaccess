@@ -1,0 +1,19 @@
+<FilesMatch "^\.">
+  Require all denied
+</FilesMatch>
+
+<IfModule mod_authz_core.c>
+  <DirectoryMatch ".*/(app|scripts|data|vendor|templates|tests|docs|backups|exports|logs)(/|$)">
+    Require all denied
+  </DirectoryMatch>
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+  <DirectoryMatch ".*/(app|scripts|data|vendor|templates|tests|docs|backups|exports|logs)(/|$)">
+    Deny from all
+  </DirectoryMatch>
+</IfModule>
+
+<FilesMatch "^(README|SPEC|TASKS|ARCHITECTURE|NOTES)\.md$">
+  Require all denied
+</FilesMatch>

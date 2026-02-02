@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/AdapterInterface.php';
+require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../crypto.php';
 
 use GuzzleHttp\Client;
 
@@ -10,8 +12,8 @@ class BlueskyAdapter implements AdapterInterface
 {
     public function publish(string $text, string $url, array $account): string
     {
-        $token = $account['oauth_token'] ?? '';
-        if ($token === '') {
+        $tokenPayload = $account['oauth_token'] ?? '';
+        if ($tokenPayload === '') {
             throw new RuntimeException('Missing Bluesky OAuth token.');
         }
 
@@ -24,27 +26,56 @@ class BlueskyAdapter implements AdapterInterface
         $bodyText = $this->buildText($text, $url);
         $facets = $this->buildLinkFacet($bodyText);
         $embed = $this->buildExternalEmbed($url);
+        $tokens = $this->parseTokens($tokenPayload);
+        $access = $tokens['access'];
+        $refresh = $tokens['refresh'];
 
         $client = new Client([
             'timeout' => 15,
         ]);
 
-        $resp = $client->post(rtrim($pds, '/') . '/xrpc/com.atproto.repo.createRecord', [
-            'headers' => [
-                'Authorization' => 'Bearer ' . $token,
-                'Accept' => 'application/json',
-            ],
-            'json' => [
-                'repo' => $repo,
-                'collection' => 'app.bsky.feed.post',
-                'record' => [
-                    'text' => $bodyText,
-                    'createdAt' => gmdate('c'),
-                    'facets' => $facets,
-                    'embed' => $embed,
+        try {
+            $resp = $client->post(rtrim($pds, '/') . '/xrpc/com.atproto.repo.createRecord', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $access,
+                    'Accept' => 'application/json',
                 ],
-            ],
-        ]);
+                'json' => [
+                    'repo' => $repo,
+                    'collection' => 'app.bsky.feed.post',
+                    'record' => [
+                        'text' => $bodyText,
+                        'createdAt' => gmdate('c'),
+                        'facets' => $facets,
+                        'embed' => $embed,
+                    ],
+                ],
+            ]);
+        } catch (GuzzleHttp\Exception\RequestException $e) {
+            $body = $e->hasResponse() ? (string) $e->getResponse()->getBody() : '';
+            if ($refresh !== '' && str_contains($body, 'ExpiredToken')) {
+                $newTokens = $this->refreshSession($pds, $refresh);
+                $this->updateStoredTokens((int) $account['id'], $newTokens);
+                $resp = $client->post(rtrim($pds, '/') . '/xrpc/com.atproto.repo.createRecord', [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $newTokens['access'],
+                        'Accept' => 'application/json',
+                    ],
+                    'json' => [
+                        'repo' => $repo,
+                        'collection' => 'app.bsky.feed.post',
+                        'record' => [
+                            'text' => $bodyText,
+                            'createdAt' => gmdate('c'),
+                            'facets' => $facets,
+                            'embed' => $embed,
+                        ],
+                    ],
+                ]);
+            } else {
+                throw $e;
+            }
+        }
 
         $data = json_decode((string) $resp->getBody(), true);
         $uri = $data['uri'] ?? '';
@@ -158,5 +189,55 @@ class BlueskyAdapter implements AdapterInterface
         }
 
         return '';
+    }
+
+    private function parseTokens(string $payload): array
+    {
+        $decoded = json_decode($payload, true);
+        if (is_array($decoded) && ($decoded['type'] ?? '') === 'bluesky') {
+            return [
+                'access' => (string) ($decoded['access'] ?? ''),
+                'refresh' => (string) ($decoded['refresh'] ?? ''),
+            ];
+        }
+
+        return [
+            'access' => $payload,
+            'refresh' => '',
+        ];
+    }
+
+    private function refreshSession(string $pds, string $refreshJwt): array
+    {
+        $client = new Client(['timeout' => 15]);
+        $resp = $client->post(rtrim($pds, '/') . '/xrpc/com.atproto.server.refreshSession', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $refreshJwt,
+                'Accept' => 'application/json',
+            ],
+        ]);
+        $data = json_decode((string) $resp->getBody(), true);
+        $access = (string) ($data['accessJwt'] ?? '');
+        $refresh = (string) ($data['refreshJwt'] ?? '');
+        if ($access === '' || $refresh === '') {
+            throw new RuntimeException('Failed to refresh Bluesky token.');
+        }
+        return ['access' => $access, 'refresh' => $refresh];
+    }
+
+    private function updateStoredTokens(int $accountId, array $tokens): void
+    {
+        $payload = json_encode([
+            'type' => 'bluesky',
+            'access' => $tokens['access'],
+            'refresh' => $tokens['refresh'],
+        ]);
+        $encrypted = encrypt_token($payload);
+        $pdo = db_connection();
+        $stmt = $pdo->prepare('UPDATE accounts SET oauth_token_encrypted = :token WHERE id = :id');
+        $stmt->execute([
+            ':token' => $encrypted,
+            ':id' => $accountId,
+        ]);
     }
 }

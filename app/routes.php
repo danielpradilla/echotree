@@ -223,6 +223,7 @@ return function (App $app): void {
             $displayName = trim((string) ($data['display_name'] ?? ''));
             $handle = trim((string) ($data['handle'] ?? ''));
             $token = trim((string) ($data['oauth_token'] ?? ''));
+            $tokenSecret = trim((string) ($data['oauth_token_secret'] ?? ''));
             $isActive = isset($data['is_active']) ? 1 : 0;
 
             if ($platform === '' || $displayName === '' || $handle === '' || $token === '') {
@@ -240,7 +241,15 @@ return function (App $app): void {
                 ]);
             }
 
-            $encrypted = verify_token_encryption($token);
+            $storedToken = $token;
+            if ($tokenSecret !== '') {
+                $storedToken = json_encode([
+                    'token' => $token,
+                    'secret' => $tokenSecret,
+                    'type' => 'oauth1',
+                ]);
+            }
+            $encrypted = verify_token_encryption($storedToken);
             $pdo = db_connection();
             $stmt = $pdo->prepare(
                 'INSERT INTO accounts (platform, display_name, handle, oauth_token_encrypted, is_active) '
@@ -292,6 +301,7 @@ return function (App $app): void {
             $displayName = trim((string) ($data['display_name'] ?? ''));
             $handle = trim((string) ($data['handle'] ?? ''));
             $token = trim((string) ($data['oauth_token'] ?? ''));
+            $tokenSecret = trim((string) ($data['oauth_token_secret'] ?? ''));
             $isActive = isset($data['is_active']) ? 1 : 0;
 
             if ($platform === '' || $displayName === '' || $handle === '') {
@@ -319,9 +329,17 @@ return function (App $app): void {
             $sql = 'UPDATE accounts SET platform = :platform, display_name = :display_name, '
                 . 'handle = :handle, is_active = :is_active';
 
-            if ($token !== '') {
+            if ($token !== '' || $tokenSecret !== '') {
                 $sql .= ', oauth_token_encrypted = :token';
-                $fields[':token'] = verify_token_encryption($token);
+                $storedToken = $token;
+                if ($tokenSecret !== '') {
+                    $storedToken = json_encode([
+                        'token' => $token,
+                        'secret' => $tokenSecret,
+                        'type' => 'oauth1',
+                    ]);
+                }
+                $fields[':token'] = verify_token_encryption($storedToken);
             }
 
             $sql .= ' WHERE id = :id';
@@ -417,6 +435,9 @@ return function (App $app): void {
             . 'FROM accounts WHERE is_active = 1 ORDER BY platform, display_name'
         )->fetchAll();
 
+        $postDetails = $_SESSION['last_post_details'] ?? null;
+        unset($_SESSION['last_post_details'], $_SESSION['last_post_status']);
+
         $view = Twig::fromRequest($request);
         return $view->render($response, 'articles/index.twig', [
             'title' => 'Articles',
@@ -428,6 +449,7 @@ return function (App $app): void {
             'mode' => $mode === 'original' ? 'original' : 'reader',
             'status' => $queryParams['status'] ?? null,
             'error' => $queryParams['error'] ?? null,
+            'post_details' => $postDetails,
             'csrf' => csrf_token(),
         ]);
     });
@@ -442,8 +464,13 @@ return function (App $app): void {
 
         if ($article) {
             $next = ((int) $article['is_read']) === 1 ? 0 : 1;
-            $update = $pdo->prepare('UPDATE articles SET is_read = :is_read WHERE id = :id');
-            $update->execute([':is_read' => $next, ':id' => $articleId]);
+            if ($next === 1) {
+                $delete = $pdo->prepare('DELETE FROM articles WHERE id = :id');
+                $delete->execute([':id' => $articleId]);
+            } else {
+                $update = $pdo->prepare('UPDATE articles SET is_read = :is_read WHERE id = :id');
+                $update->execute([':is_read' => $next, ':id' => $articleId]);
+            }
         }
 
         $referer = $request->getHeaderLine('Referer');
@@ -459,10 +486,10 @@ return function (App $app): void {
         $pdo = db_connection();
 
         if ($feedId) {
-            $stmt = $pdo->prepare('UPDATE articles SET is_read = 1 WHERE feed_id = :feed_id');
+            $stmt = $pdo->prepare('DELETE FROM articles WHERE feed_id = :feed_id');
             $stmt->execute([':feed_id' => $feedId]);
         } else {
-            $pdo->exec('UPDATE articles SET is_read = 1');
+            $pdo->exec('DELETE FROM articles');
         }
 
         $query = $feedId ? ('?feed_id=' . $feedId) : '';
@@ -581,6 +608,9 @@ return function (App $app): void {
             . 'FROM accounts WHERE is_active = 1 ORDER BY platform, display_name'
         )->fetchAll();
 
+        $postDetails = $_SESSION['last_post_details'] ?? null;
+        unset($_SESSION['last_post_details'], $_SESSION['last_post_status']);
+
         $view = Twig::fromRequest($request);
         return $view->render($response, 'share.twig', [
             'title' => 'Share',
@@ -590,6 +620,7 @@ return function (App $app): void {
             'csrf' => csrf_token(),
             'error' => $error,
             'status' => $queryParams['status'] ?? null,
+            'post_details' => $postDetails,
         ]);
     });
 
@@ -722,11 +753,17 @@ return function (App $app): void {
                     ]);
                     $data = json_decode((string) $resp->getBody(), true);
                     $token = (string) ($data['accessJwt'] ?? '');
+                    $refresh = (string) ($data['refreshJwt'] ?? '');
                     $displayName = (string) ($data['handle'] ?? $handle);
-                    if ($token === '') {
+                    if ($token === '' || $refresh === '') {
                         $error = 'Failed to create Bluesky session.';
                     } else {
-                        oauth_upsert_account('bluesky', $displayName, $handle, $token);
+                        $payload = json_encode([
+                            'type' => 'bluesky',
+                            'access' => $token,
+                            'refresh' => $refresh,
+                        ]);
+                        oauth_upsert_account('bluesky', $displayName, $handle, $payload);
                         return $response->withHeader('Location', '/accounts')->withStatus(302);
                     }
                 } catch (GuzzleHttp\Exception\RequestException $e) {
@@ -1073,6 +1110,7 @@ return function (App $app): void {
         $target = $returnTo !== '' ? $returnTo : "/articles/{$articleId}";
         $sep = str_contains($target, '?') ? '&' : '?';
         $status = 'scheduled';
+        $pdo = db_connection();
 
         if ($action === 'now') {
             $statusRows = $pdo->prepare(
@@ -1092,6 +1130,14 @@ return function (App $app): void {
                 $status = 'failed';
             }
         }
+
+        $detailStmt = $pdo->prepare(
+            'SELECT d.status, d.error, a.platform FROM deliveries d '
+            . 'JOIN accounts a ON a.id = d.account_id WHERE d.post_id = :id'
+        );
+        $detailStmt->execute([':id' => $postId]);
+        $_SESSION['last_post_details'] = $detailStmt->fetchAll();
+        $_SESSION['last_post_status'] = $status;
 
         return $response
             ->withHeader('Location', $target . $sep . 'status=' . $status)
@@ -1169,6 +1215,14 @@ return function (App $app): void {
             $data = (array) $request->getParsedBody();
             $username = trim((string) ($data['username'] ?? ''));
             $password = (string) ($data['password'] ?? '');
+
+            if ($username !== '' && is_login_throttled($username)) {
+                return $view->render($response, 'login.twig', [
+                    'title' => 'Login',
+                    'error' => 'Too many failed attempts. Please wait and try again.',
+                    'csrf' => csrf_token(),
+                ]);
+            }
 
             $user = authenticate($username, $password);
             if ($user) {

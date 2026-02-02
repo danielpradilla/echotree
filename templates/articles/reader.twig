@@ -56,7 +56,7 @@
           <br /><br />
           <label>
             Schedule
-            <input type="datetime-local" name="scheduled_at" />
+            <input id="reader-schedule" type="datetime-local" name="scheduled_at" />
           </label>
           <br /><br />
           <fieldset style="border: 0; padding: 0; margin: 0;">
@@ -79,4 +79,13 @@
       </div>
     </aside>
   </div>
+  <script>
+    (function () {
+      var scheduleInput = document.getElementById('reader-schedule');
+      if (scheduleInput && !scheduleInput.value) {
+        var now = new Date(Date.now() + 5 * 60 * 1000);
+        scheduleInput.value = now.toISOString().slice(0, 16);
+      }
+    })();
+  </script>
 {% endblock %}

@@ -36,8 +36,13 @@ if ($feedId) {
     $stmt->execute([':id' => $feedId]);
     $feeds = $stmt->fetchAll();
 } else {
-    $feeds = $pdo->query('SELECT id, name, url FROM feeds WHERE is_active = 1 ORDER BY id ASC')
-        ->fetchAll();
+$feeds = $pdo->query('SELECT id, name, url FROM feeds WHERE is_active = 1 ORDER BY id ASC')
+    ->fetchAll();
+
+$maxPerFeed = (int) (getenv('ECHOTREE_FEED_MAX_ITEMS') ?: 30);
+if ($maxPerFeed < 1) {
+    $maxPerFeed = 30;
+}
 }
 
 if (!$feeds) {
@@ -79,7 +84,17 @@ foreach ($feeds as $feed) {
         continue;
     }
 
+    usort($items, function ($a, $b) {
+        $ad = (int) $a->get_date('U');
+        $bd = (int) $b->get_date('U');
+        return $bd <=> $ad;
+    });
+
+    $count = 0;
     foreach ($items as $item) {
+        if ($count >= $maxPerFeed) {
+            break;
+        }
         $url = trim((string) $item->get_permalink());
         if ($url === '') {
             continue;
@@ -163,6 +178,8 @@ foreach ($feeds as $feed) {
 
             fwrite(STDOUT, "  Added: {$title}\n");
         }
+
+        $count++;
     }
 
     $update = $pdo->prepare("UPDATE feeds SET last_fetched_at = datetime('now') WHERE id = :id");

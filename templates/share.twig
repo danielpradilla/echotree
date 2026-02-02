@@ -50,6 +50,21 @@
             <p class="muted">Share failed. Check account settings.</p>
           </div>
         {% endif %}
+        {% if post_details %}
+          <div class="card" style="margin-bottom: 12px;">
+            <p class="muted">Per network:</p>
+            <ul style="margin: 8px 0 0 16px;">
+              {% for row in post_details %}
+                <li class="muted">
+                  {{ row.platform }} — {{ row.status }}
+                  {% if row.status == 'failed' and row.error %}
+                    ({{ row.error }})
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
         {% if error %}
           <div class="card" style="margin-bottom: 12px;">
             <p class="muted">Please add a comment, schedule time, and at least one account.</p>
@@ -110,7 +125,7 @@
             <br /><br />
             <label>
               Schedule
-              <input type="datetime-local" name="scheduled_at" />
+              <input id="share-schedule" type="datetime-local" name="scheduled_at" />
             </label>
             <br /><br />
             <fieldset style="border: 0; padding: 0; margin: 0;">
@@ -148,6 +163,12 @@
       var csrf = '{{ csrf }}';
       var modeSelect = document.getElementById('share-generate-mode');
       var lengthEl = document.getElementById('share-comment-length');
+      var scheduleInput = document.getElementById('share-schedule');
+
+      if (scheduleInput && !scheduleInput.value) {
+        var now = new Date(Date.now() + 5 * 60 * 1000);
+        scheduleInput.value = now.toISOString().slice(0, 16);
+      }
 
       button.addEventListener('click', function () {
         var articleId = button.getAttribute('data-article-id');

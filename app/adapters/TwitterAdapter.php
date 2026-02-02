@@ -21,9 +21,11 @@ class TwitterAdapter implements AdapterInterface
             'timeout' => 15,
         ]);
 
+        $authHeader = $this->buildAuthHeader($token, 'POST', 'https://api.twitter.com/2/tweets');
+
         $resp = $client->post('https://api.twitter.com/2/tweets', [
             'headers' => [
-                'Authorization' => 'Bearer ' . $token,
+                'Authorization' => $authHeader,
                 'Accept' => 'application/json',
             ],
             'json' => [
@@ -48,5 +50,62 @@ class TwitterAdapter implements AdapterInterface
         }
 
         return $text;
+    }
+
+    private function buildAuthHeader(string $tokenPayload, string $method, string $url): string
+    {
+        $decoded = json_decode($tokenPayload, true);
+        if (is_array($decoded) && ($decoded['type'] ?? '') === 'oauth1') {
+            $consumerKey = getenv('ECHOTREE_X_API_KEY') ?: '';
+            $consumerSecret = getenv('ECHOTREE_X_API_SECRET') ?: '';
+            if ($consumerKey === '' || $consumerSecret === '') {
+                throw new RuntimeException('Missing ECHOTREE_X_API_KEY or ECHOTREE_X_API_SECRET.');
+            }
+
+            $token = (string) ($decoded['token'] ?? '');
+            $secret = (string) ($decoded['secret'] ?? '');
+            if ($token === '' || $secret === '') {
+                throw new RuntimeException('Missing OAuth 1.0a token or secret.');
+            }
+
+            return $this->oauth1Header($method, $url, $consumerKey, $consumerSecret, $token, $secret);
+        }
+
+        return 'Bearer ' . $tokenPayload;
+    }
+
+    private function oauth1Header(string $method, string $url, string $consumerKey, string $consumerSecret, string $token, string $tokenSecret): string
+    {
+        $params = [
+            'oauth_consumer_key' => $consumerKey,
+            'oauth_nonce' => bin2hex(random_bytes(16)),
+            'oauth_signature_method' => 'HMAC-SHA1',
+            'oauth_timestamp' => (string) time(),
+            'oauth_token' => $token,
+            'oauth_version' => '1.0',
+        ];
+
+        $base = $this->signatureBaseString($method, $url, $params);
+        $signingKey = rawurlencode($consumerSecret) . '&' . rawurlencode($tokenSecret);
+        $params['oauth_signature'] = base64_encode(hash_hmac('sha1', $base, $signingKey, true));
+
+        $headerParams = [];
+        foreach ($params as $key => $value) {
+            $headerParams[] = rawurlencode($key) . '="' . rawurlencode($value) . '"';
+        }
+
+        return 'OAuth ' . implode(', ', $headerParams);
+    }
+
+    private function signatureBaseString(string $method, string $url, array $params): string
+    {
+        ksort($params);
+        $pairs = [];
+        foreach ($params as $key => $value) {
+            $pairs[] = rawurlencode($key) . '=' . rawurlencode($value);
+        }
+        $paramString = implode('&', $pairs);
+
+        return strtoupper($method) . '&' . rawurlencode($url) . '&' . rawurlencode($paramString);
     }
 }
