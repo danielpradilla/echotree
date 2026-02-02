@@ -11,6 +11,7 @@ NOTES.md
 # =========================
 .env
 .env.*
+!.env.example
 *.key
 *.pem
 secrets.*
@@ -42,6 +43,11 @@ venv/
 *.log
 tmp/
 exports/
+
+# =========================
+# Dependencies
+# =========================
+vendor/
 
 # =========================
 # IDE

@@ -8,6 +8,9 @@ use Slim\Views\TwigMiddleware;
 
 error_reporting(E_ALL & ~E_DEPRECATED);
 
+require __DIR__ . '/../app/env.php';
+load_env(__DIR__ . '/../.env');
+
 require __DIR__ . '/../vendor/autoload.php';
 
 $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')

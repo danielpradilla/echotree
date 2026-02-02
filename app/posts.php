@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 
-function create_scheduled_post(int $articleId, string $comment, string $scheduledAt, array $accountIds): void
+function create_scheduled_post(int $articleId, string $comment, string $scheduledAt, array $accountIds): int
 {
     $pdo = db_connection();
     $pdo->beginTransaction();
@@ -37,6 +37,7 @@ function create_scheduled_post(int $articleId, string $comment, string $schedule
         }
 
         $pdo->commit();
+        return $postId;
     } catch (Throwable $e) {
         $pdo->rollBack();
         throw $e;

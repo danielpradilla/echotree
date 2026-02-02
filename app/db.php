@@ -27,7 +27,7 @@ function db_connection(): PDO
 
 function auto_init_schema(PDO $pdo, string $baseDir): void
 {
-    $check = $pdo->query(\"SELECT name FROM sqlite_master WHERE type='table' AND name='feeds'\")->fetch();
+    $check = $pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name='feeds'")->fetch();
     if ($check) {
         return;
     }

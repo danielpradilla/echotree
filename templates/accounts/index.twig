@@ -42,5 +42,19 @@
         </tbody>
       </table>
     {% endif %}
+
+    <hr style="margin: 16px 0; border: 0; border-top: 1px solid #eadfce;" />
+    <div>
+      <p class="muted">Connect an account:</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        <a href="/oauth/mastodon/start">Connect Mastodon</a>
+        <a href="/oauth/x/start">Connect X</a>
+        <a href="/oauth/linkedin/start">Connect LinkedIn</a>
+        <a href="/oauth/bluesky">Connect Bluesky</a>
+      </div>
+      <p class="muted" style="margin-top: 8px;">
+        Callback URL: {{ oauth_callback }}
+      </p>
+    </div>
   </div>
 {% endblock %}

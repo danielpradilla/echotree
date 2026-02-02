@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+require __DIR__ . '/../app/env.php';
+load_env(__DIR__ . '/../.env');
+
+require __DIR__ . '/../vendor/autoload.php';
 require __DIR__ . '/../app/db.php';
 require __DIR__ . '/../app/crypto.php';
 require __DIR__ . '/../app/adapters/AdapterFactory.php';
@@ -9,6 +13,10 @@ require __DIR__ . '/../app/adapters/AdapterFactory.php';
 $pdo = db_connection();
 $pdo->exec('PRAGMA foreign_keys = ON');
 
+$rateLimitMinutes = (int) (getenv('ECHOTREE_RATE_LIMIT_MINUTES') ?: 10);
+if ($rateLimitMinutes < 1) {
+    $rateLimitMinutes = 10;
+}
 $posts = $pdo->query(
     "SELECT id, article_id, comment, scheduled_at "
     . "FROM posts "
@@ -52,10 +60,13 @@ foreach ($posts as $post) {
         $recent = $pdo->prepare(
             "SELECT 1 FROM deliveries "
             . "WHERE account_id = :account_id AND status = 'sent' "
-            . "AND sent_at >= datetime('now', '-10 minutes') "
+            . "AND sent_at >= datetime('now', :window) "
             . "LIMIT 1"
         );
-        $recent->execute([':account_id' => $accountId]);
+        $recent->execute([
+            ':account_id' => $accountId,
+            ':window' => '-' . $rateLimitMinutes . ' minutes',
+        ]);
         if ($recent->fetch()) {
             fwrite(STDOUT, "Rate limit: account {$accountId} (post {$postId})\n");
             continue;

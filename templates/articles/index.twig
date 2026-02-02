@@ -100,6 +100,24 @@
 
       <div class="inbox__viewer">
         {% if selected %}
+          {% if status == 'shared' %}
+            <div class="card" style="margin-bottom: 12px;">
+              <p class="muted">Article shared.</p>
+            </div>
+          {% elseif status == 'scheduled' %}
+            <div class="card" style="margin-bottom: 12px;">
+              <p class="muted">Article scheduled (rate limit).</p>
+            </div>
+          {% elseif status == 'failed' %}
+            <div class="card" style="margin-bottom: 12px;">
+              <p class="muted">Share failed. Check account settings.</p>
+            </div>
+          {% endif %}
+          {% if error %}
+            <div class="card" style="margin-bottom: 12px;">
+              <p class="muted">Please add a comment, schedule time, and at least one account.</p>
+            </div>
+          {% endif %}
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
               <strong>{{ selected.title }}</strong>
@@ -133,10 +151,26 @@
             <form method="post" action="/posts">
               <input type="hidden" name="_csrf" value="{{ csrf }}" />
               <input type="hidden" name="article_id" value="{{ selected.id }}" />
+              <input type="hidden" name="return_to" value="/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode={{ mode }}" />
               <label>
                 Comment
-                <textarea name="comment" rows="4" style="width: 100%;"></textarea>
+                <textarea id="article-comment" name="comment" rows="4" style="width: 100%;"></textarea>
               </label>
+              <div class="muted" style="font-size: 12px;">
+                Length: <span id="article-comment-length">0</span>
+              </div>
+              <div style="margin-top: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <label>
+                  Generate
+                  <select id="article-generate-mode">
+                    <option value="comment">Comment</option>
+                    <option value="summary">Summary</option>
+                    <option value="phrase">Impactful phrase</option>
+                  </select>
+                </label>
+                <button type="button" data-generate-comment data-article-id="{{ selected.id }}">Generate</button>
+                <span class="muted" data-comment-status></span>
+              </div>
               <br /><br />
               <label>
                 Schedule
@@ -157,7 +191,8 @@
                 {% endif %}
               </fieldset>
               <br />
-              <button type="submit">Schedule post</button>
+              <button type="submit" name="action" value="schedule">Schedule</button>
+              <button type="submit" name="action" value="now" style="margin-left: 6px;">Share now</button>
             </form>
           </div>
         {% else %}
@@ -168,4 +203,51 @@
       </div>
     </div>
   </div>
+
+  <script>
+    (function () {
+      var button = document.querySelector('[data-generate-comment]');
+      if (!button) return;
+      var status = document.querySelector('[data-comment-status]');
+      var textarea = document.getElementById('article-comment');
+      var csrf = '{{ csrf }}';
+      var modeSelect = document.getElementById('article-generate-mode');
+      var lengthEl = document.getElementById('article-comment-length');
+
+      button.addEventListener('click', function () {
+        var articleId = button.getAttribute('data-article-id');
+        if (!articleId || !textarea) return;
+        button.disabled = true;
+        if (status) status.textContent = 'Generating...';
+        var body = new URLSearchParams();
+        body.set('_csrf', csrf);
+        if (modeSelect && modeSelect.value) {
+          body.set('mode', modeSelect.value);
+        }
+        fetch('/articles/' + articleId + '/comment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body.toString()
+        })
+          .then(function (res) { return res.text(); })
+          .then(function (text) {
+            textarea.value = text;
+            if (lengthEl) lengthEl.textContent = String(text.length);
+            if (status) status.textContent = '';
+          })
+          .catch(function () {
+            if (status) status.textContent = 'Failed to generate.';
+          })
+          .finally(function () {
+            button.disabled = false;
+          });
+      });
+
+      if (textarea && lengthEl) {
+        textarea.addEventListener('input', function () {
+          lengthEl.textContent = String(textarea.value.length);
+        });
+      }
+    })();
+  </script>
 {% endblock %}

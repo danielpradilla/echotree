@@ -1,0 +1,28 @@
+{% extends "layout.twig" %}
+
+{% block content %}
+  <div class="card">
+    <form method="post" action="/oauth/bluesky">
+      <input type="hidden" name="_csrf" value="{{ csrf }}" />
+      <label>
+        Bluesky handle
+        <input type="text" name="handle" placeholder="name.bsky.social" required />
+      </label>
+      <br /><br />
+      <label>
+        App password
+        <input type="password" name="app_password" required />
+      </label>
+      <br /><br />
+      <label>
+        PDS (optional)
+        <input type="url" name="pds" value="{{ pds }}" />
+      </label>
+      <br /><br />
+      <button type="submit">Connect Bluesky</button>
+      {% if error %}
+        <span class="muted" style="margin-left: 8px;">{{ error }}</span>
+      {% endif %}
+    </form>
+  </div>
+{% endblock %}

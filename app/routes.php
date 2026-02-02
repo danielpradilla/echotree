@@ -10,6 +10,8 @@ require_once __DIR__ . '/csrf.php';
 require_once __DIR__ . '/crypto.php';
 require_once __DIR__ . '/posts.php';
 require_once __DIR__ . '/summaries.php';
+require_once __DIR__ . '/oauth.php';
+require_once __DIR__ . '/comments.php';
 
 return function (App $app): void {
     $app->add('require_login');
@@ -208,6 +210,7 @@ return function (App $app): void {
             'title' => 'Accounts',
             'accounts' => $accounts,
             'csrf' => csrf_token(),
+            'oauth_callback' => getenv('ECHOTREE_OAUTH_CALLBACK') ?: 'https://danielpradilla.info/oauth/callback',
         ]);
     });
 
@@ -423,6 +426,8 @@ return function (App $app): void {
             'selected' => $selectedArticle,
             'accounts' => $accounts,
             'mode' => $mode === 'original' ? 'original' : 'reader',
+            'status' => $queryParams['status'] ?? null,
+            'error' => $queryParams['error'] ?? null,
             'csrf' => csrf_token(),
         ]);
     });
@@ -472,10 +477,11 @@ return function (App $app): void {
         $selectedId = isset($queryParams['selected']) ? (int) $queryParams['selected'] : null;
         $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'reader';
         $error = null;
+        $urlFromQuery = trim((string) ($queryParams['url'] ?? ''));
 
-        if ($request->getMethod() === 'POST') {
+        if ($request->getMethod() === 'POST' || $urlFromQuery !== '') {
             $data = (array) $request->getParsedBody();
-            $url = trim((string) ($data['url'] ?? ''));
+            $url = $urlFromQuery !== '' ? $urlFromQuery : trim((string) ($data['url'] ?? ''));
 
             if ($url === '' || !filter_var($url, FILTER_VALIDATE_URL)) {
                 $error = 'Please enter a valid URL.';
@@ -583,7 +589,337 @@ return function (App $app): void {
             'mode' => $mode === 'original' ? 'original' : 'reader',
             'csrf' => csrf_token(),
             'error' => $error,
+            'status' => $queryParams['status'] ?? null,
         ]);
+    });
+
+    $app->get('/oauth/{platform}/start', function ($request, $response, $args) {
+        $platform = strtolower((string) ($args['platform'] ?? ''));
+        $state = oauth_random_string(24);
+        $redirectUri = getenv('ECHOTREE_OAUTH_CALLBACK') ?: 'https://danielpradilla.info/oauth/callback';
+        $view = Twig::fromRequest($request);
+
+        if ($platform === 'mastodon') {
+            $baseUrl = getenv('ECHOTREE_MASTODON_BASE_URL') ?: '';
+            $clientId = getenv('ECHOTREE_MASTODON_CLIENT_ID') ?: '';
+            if ($baseUrl === '' || $clientId === '') {
+                return $view->render($response, 'oauth/error.twig', [
+                    'title' => 'Mastodon',
+                    'message' => 'Missing ECHOTREE_MASTODON_BASE_URL or ECHOTREE_MASTODON_CLIENT_ID.',
+                ])->withStatus(400);
+            }
+
+            oauth_save_state('mastodon', ['state' => $state]);
+            $url = rtrim($baseUrl, '/') . '/oauth/authorize'
+                . '?response_type=code'
+                . '&client_id=' . rawurlencode($clientId)
+                . '&redirect_uri=' . rawurlencode($redirectUri)
+                . '&scope=' . rawurlencode('read write')
+                . '&state=' . rawurlencode($state);
+
+            return $response->withHeader('Location', $url)->withStatus(302);
+        }
+
+        if ($platform === 'x') {
+            $clientId = getenv('ECHOTREE_X_CLIENT_ID') ?: '';
+            if ($clientId === '') {
+                return $view->render($response, 'oauth/error.twig', [
+                    'title' => 'X',
+                    'message' => 'Missing ECHOTREE_X_CLIENT_ID.',
+                ])->withStatus(400);
+            }
+
+            $codeVerifier = oauth_random_string(64);
+            $codeChallenge = rtrim(strtr(base64_encode(hash('sha256', $codeVerifier, true)), '+/', '-_'), '=');
+            oauth_save_state('x', [
+                'state' => $state,
+                'code_verifier' => $codeVerifier,
+            ]);
+
+            $scope = 'tweet.write users.read offline.access';
+            $url = 'https://twitter.com/i/oauth2/authorize'
+                . '?response_type=code'
+                . '&client_id=' . rawurlencode($clientId)
+                . '&redirect_uri=' . rawurlencode($redirectUri)
+                . '&scope=' . rawurlencode($scope)
+                . '&state=' . rawurlencode($state)
+                . '&code_challenge=' . rawurlencode($codeChallenge)
+                . '&code_challenge_method=S256';
+
+            return $response->withHeader('Location', $url)->withStatus(302);
+        }
+
+        if ($platform === 'linkedin') {
+            $clientId = getenv('ECHOTREE_LINKEDIN_CLIENT_ID') ?: '';
+            if ($clientId === '') {
+                return $view->render($response, 'oauth/error.twig', [
+                    'title' => 'LinkedIn',
+                    'message' => 'Missing ECHOTREE_LINKEDIN_CLIENT_ID.',
+                ])->withStatus(400);
+            }
+
+            oauth_save_state('linkedin', ['state' => $state]);
+            $scope = 'r_liteprofile w_member_social';
+            $url = 'https://www.linkedin.com/oauth/v2/authorization'
+                . '?response_type=code'
+                . '&client_id=' . rawurlencode($clientId)
+                . '&redirect_uri=' . rawurlencode($redirectUri)
+                . '&scope=' . rawurlencode($scope)
+                . '&state=' . rawurlencode($state);
+
+            return $response->withHeader('Location', $url)->withStatus(302);
+        }
+
+        return $view->render($response, 'oauth/error.twig', [
+            'title' => 'OAuth',
+            'message' => 'Unknown platform.',
+        ])->withStatus(404);
+    });
+
+    $app->map(['GET', 'POST'], '/oauth/bluesky', function ($request, $response) {
+        $error = null;
+
+        if ($request->getMethod() === 'POST') {
+            $data = (array) $request->getParsedBody();
+            $handle = trim((string) ($data['handle'] ?? ''));
+            $password = trim((string) ($data['app_password'] ?? ''));
+            $password = str_replace(' ', '', $password);
+            $pds = trim((string) ($data['pds'] ?? ''));
+
+            if ($handle === '' || $password === '') {
+                $error = 'Handle and app password are required.';
+            } else {
+                try {
+                    $client = new GuzzleHttp\Client(['timeout' => 15]);
+                    if ($pds === '') {
+                        $resolve = $client->get('https://bsky.social/xrpc/com.atproto.identity.resolveHandle', [
+                            'query' => ['handle' => $handle],
+                        ]);
+                        $resolveData = json_decode((string) $resolve->getBody(), true);
+                        $did = (string) ($resolveData['did'] ?? '');
+                        if ($did !== '') {
+                            $doc = $client->get('https://plc.directory/' . rawurlencode($did));
+                            $docData = json_decode((string) $doc->getBody(), true);
+                            $services = $docData['service'] ?? [];
+                            foreach ($services as $service) {
+                                if (($service['type'] ?? '') === 'AtprotoPersonalDataServer') {
+                                    $pds = (string) ($service['serviceEndpoint'] ?? '');
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if ($pds === '') {
+                        $pds = getenv('ECHOTREE_BLUESKY_PDS') ?: 'https://bsky.social';
+                    }
+
+                    $resp = $client->post(rtrim($pds, '/') . '/xrpc/com.atproto.server.createSession', [
+                        'json' => [
+                            'identifier' => $handle,
+                            'password' => $password,
+                        ],
+                    ]);
+                    $data = json_decode((string) $resp->getBody(), true);
+                    $token = (string) ($data['accessJwt'] ?? '');
+                    $displayName = (string) ($data['handle'] ?? $handle);
+                    if ($token === '') {
+                        $error = 'Failed to create Bluesky session.';
+                    } else {
+                        oauth_upsert_account('bluesky', $displayName, $handle, $token);
+                        return $response->withHeader('Location', '/accounts')->withStatus(302);
+                    }
+                } catch (GuzzleHttp\Exception\RequestException $e) {
+                    $body = '';
+                    if ($e->hasResponse()) {
+                        $body = (string) $e->getResponse()->getBody();
+                    }
+                    $details = $body !== '' ? $body : $e->getMessage();
+                    $error = 'Bluesky auth failed (' . $pds . '): ' . $details;
+                } catch (GuzzleHttp\Exception\GuzzleException $e) {
+                    $error = 'Bluesky auth failed (' . $pds . '): ' . $e->getMessage();
+                } catch (Throwable $e) {
+                    $error = 'Bluesky auth failed: ' . $e->getMessage();
+                }
+            }
+        }
+
+        $view = Twig::fromRequest($request);
+        return $view->render($response, 'oauth/bluesky.twig', [
+            'title' => 'Bluesky',
+            'csrf' => csrf_token(),
+            'error' => $error,
+            'pds' => getenv('ECHOTREE_BLUESKY_PDS') ?: 'https://bsky.social',
+        ]);
+    });
+
+    $app->get('/oauth/callback', function ($request, $response) {
+        $query = $request->getQueryParams();
+        $code = (string) ($query['code'] ?? '');
+        $state = (string) ($query['state'] ?? '');
+        $redirectUri = getenv('ECHOTREE_OAUTH_CALLBACK') ?: 'https://danielpradilla.info/oauth/callback';
+        $view = Twig::fromRequest($request);
+
+        if ($code === '' || $state === '') {
+            return $view->render($response, 'oauth/error.twig', [
+                'title' => 'OAuth',
+                'message' => 'Missing authorization code or state.',
+            ])->withStatus(400);
+        }
+
+        if (oauth_get_state('x') && ($state === oauth_get_state('x')['state'])) {
+            $clientId = getenv('ECHOTREE_X_CLIENT_ID') ?: '';
+            $clientSecret = getenv('ECHOTREE_X_CLIENT_SECRET') ?: '';
+            $verifier = oauth_get_state('x')['code_verifier'] ?? '';
+            oauth_clear_state('x');
+
+            if ($clientId === '' || $verifier === '') {
+                return $view->render($response, 'oauth/error.twig', [
+                    'title' => 'X',
+                    'message' => 'Missing client ID or PKCE verifier.',
+                ])->withStatus(400);
+            }
+
+            $client = new GuzzleHttp\Client(['timeout' => 15]);
+            $headers = [
+                'Content-Type' => 'application/x-www-form-urlencoded',
+            ];
+            if ($clientSecret !== '') {
+                $basic = base64_encode($clientId . ':' . $clientSecret);
+                $headers['Authorization'] = 'Basic ' . $basic;
+            }
+            $resp = $client->post('https://api.twitter.com/2/oauth2/token', [
+                'headers' => $headers,
+                'form_params' => [
+                    'grant_type' => 'authorization_code',
+                    'client_id' => $clientId,
+                    'redirect_uri' => $redirectUri,
+                    'code' => $code,
+                    'code_verifier' => $verifier,
+                ],
+            ]);
+            $data = json_decode((string) $resp->getBody(), true);
+            $token = (string) ($data['access_token'] ?? '');
+            if ($token === '') {
+                return $view->render($response, 'oauth/error.twig', [
+                    'title' => 'X',
+                    'message' => 'Token exchange failed.',
+                ])->withStatus(400);
+            }
+
+            $username = '';
+            $name = '';
+            try {
+                $me = $client->get('https://api.twitter.com/2/users/me', [
+                    'headers' => ['Authorization' => 'Bearer ' . $token],
+                ]);
+                $meData = json_decode((string) $me->getBody(), true);
+                $username = (string) ($meData['data']['username'] ?? '');
+                $name = (string) ($meData['data']['name'] ?? '');
+            } catch (Throwable $e) {
+                $username = 'x-user';
+                $name = 'X account';
+            }
+            if ($username === '') {
+                $username = 'x-user';
+            }
+
+            oauth_upsert_account('twitter', $name !== '' ? $name : $username, $username, $token);
+            return $response->withHeader('Location', '/accounts')->withStatus(302);
+        }
+
+        if (oauth_get_state('linkedin') && ($state === oauth_get_state('linkedin')['state'])) {
+            $clientId = getenv('ECHOTREE_LINKEDIN_CLIENT_ID') ?: '';
+            $clientSecret = getenv('ECHOTREE_LINKEDIN_CLIENT_SECRET') ?: '';
+            oauth_clear_state('linkedin');
+
+            if ($clientId === '' || $clientSecret === '') {
+                return $view->render($response, 'oauth/error.twig', [
+                    'title' => 'LinkedIn',
+                    'message' => 'Missing client ID or client secret.',
+                ])->withStatus(400);
+            }
+
+            $client = new GuzzleHttp\Client(['timeout' => 15]);
+            $resp = $client->post('https://www.linkedin.com/oauth/v2/accessToken', [
+                'form_params' => [
+                    'grant_type' => 'authorization_code',
+                    'code' => $code,
+                    'redirect_uri' => $redirectUri,
+                    'client_id' => $clientId,
+                    'client_secret' => $clientSecret,
+                ],
+            ]);
+            $data = json_decode((string) $resp->getBody(), true);
+            $token = (string) ($data['access_token'] ?? '');
+            if ($token === '') {
+                return $view->render($response, 'oauth/error.twig', [
+                    'title' => 'LinkedIn',
+                    'message' => 'Token exchange failed.',
+                ])->withStatus(400);
+            }
+
+            $me = $client->get('https://api.linkedin.com/v2/me', [
+                'headers' => ['Authorization' => 'Bearer ' . $token],
+            ]);
+            $meData = json_decode((string) $me->getBody(), true);
+            $id = (string) ($meData['id'] ?? '');
+            $localized = $meData['localizedFirstName'] ?? '';
+            $localizedLast = $meData['localizedLastName'] ?? '';
+            $display = trim($localized . ' ' . $localizedLast);
+            $handle = $id !== '' ? $id : 'linkedin-user';
+
+            oauth_upsert_account('linkedin', $display !== '' ? $display : $handle, $handle, $token);
+            return $response->withHeader('Location', '/accounts')->withStatus(302);
+        }
+
+        if (oauth_get_state('mastodon') && ($state === oauth_get_state('mastodon')['state'])) {
+            $baseUrl = getenv('ECHOTREE_MASTODON_BASE_URL') ?: '';
+            $clientId = getenv('ECHOTREE_MASTODON_CLIENT_ID') ?: '';
+            $clientSecret = getenv('ECHOTREE_MASTODON_CLIENT_SECRET') ?: '';
+            oauth_clear_state('mastodon');
+
+            if ($baseUrl === '' || $clientId === '' || $clientSecret === '') {
+                return $view->render($response, 'oauth/error.twig', [
+                    'title' => 'Mastodon',
+                    'message' => 'Missing base URL or client credentials.',
+                ])->withStatus(400);
+            }
+
+            $client = new GuzzleHttp\Client(['timeout' => 15]);
+            $resp = $client->post(rtrim($baseUrl, '/') . '/oauth/token', [
+                'form_params' => [
+                    'grant_type' => 'authorization_code',
+                    'code' => $code,
+                    'redirect_uri' => $redirectUri,
+                    'client_id' => $clientId,
+                    'client_secret' => $clientSecret,
+                    'scope' => 'read write',
+                ],
+            ]);
+            $data = json_decode((string) $resp->getBody(), true);
+            $token = (string) ($data['access_token'] ?? '');
+            if ($token === '') {
+                return $view->render($response, 'oauth/error.twig', [
+                    'title' => 'Mastodon',
+                    'message' => 'Token exchange failed.',
+                ])->withStatus(400);
+            }
+
+            $me = $client->get(rtrim($baseUrl, '/') . '/api/v1/accounts/verify_credentials', [
+                'headers' => ['Authorization' => 'Bearer ' . $token],
+            ]);
+            $meData = json_decode((string) $me->getBody(), true);
+            $handle = (string) ($meData['acct'] ?? 'mastodon-user');
+            $display = (string) ($meData['display_name'] ?? $handle);
+            oauth_upsert_account('mastodon', $display, $handle, $token);
+            return $response->withHeader('Location', '/accounts')->withStatus(302);
+        }
+
+        return $view->render($response, 'oauth/error.twig', [
+            'title' => 'OAuth',
+            'message' => 'Invalid or expired state.',
+        ])->withStatus(400);
     });
 
     $app->get('/articles/{id}', function ($request, $response, $args) {
@@ -701,25 +1037,64 @@ return function (App $app): void {
         $articleId = (int) ($data['article_id'] ?? 0);
         $comment = trim((string) ($data['comment'] ?? ''));
         $scheduledAt = trim((string) ($data['scheduled_at'] ?? ''));
+        $action = trim((string) ($data['action'] ?? 'schedule'));
+        $returnTo = trim((string) ($data['return_to'] ?? ''));
         $accountIds = array_map('intval', (array) ($data['account_ids'] ?? []));
 
-        if ($articleId === 0 || $comment === '' || $scheduledAt === '' || count($accountIds) === 0) {
+        if ($articleId === 0 || $comment === '' || count($accountIds) === 0) {
+            $fallback = $returnTo !== '' ? $returnTo : "/articles/{$articleId}";
+            $sep = str_contains($fallback, '?') ? '&' : '?';
             return $response
-                ->withHeader('Location', "/articles/{$articleId}?error=1")
+                ->withHeader('Location', $fallback . $sep . 'error=1')
                 ->withStatus(302);
         }
 
-        $dt = DateTime::createFromFormat('Y-m-d\\TH:i', $scheduledAt);
-        if (!$dt) {
-            return $response
-                ->withHeader('Location', "/articles/{$articleId}?error=1")
-                ->withStatus(302);
+        if ($action === 'now') {
+            $scheduledAt = date('Y-m-d H:i:s');
+        } else {
+            $dt = DateTime::createFromFormat('Y-m-d\\TH:i', $scheduledAt);
+            if (!$dt) {
+                $fallback = $returnTo !== '' ? $returnTo : "/articles/{$articleId}";
+                $sep = str_contains($fallback, '?') ? '&' : '?';
+                return $response
+                    ->withHeader('Location', $fallback . $sep . 'error=1')
+                    ->withStatus(302);
+            }
+            $scheduledAt = $dt->format('Y-m-d H:i:s');
         }
 
-        create_scheduled_post($articleId, $comment, $scheduledAt, $accountIds);
+        $postId = create_scheduled_post($articleId, $comment, $scheduledAt, $accountIds);
+
+        if ($action === 'now') {
+            $cmd = 'php ' . escapeshellarg(__DIR__ . '/../scripts/publisher.php');
+            shell_exec($cmd);
+        }
+
+        $target = $returnTo !== '' ? $returnTo : "/articles/{$articleId}";
+        $sep = str_contains($target, '?') ? '&' : '?';
+        $status = 'scheduled';
+
+        if ($action === 'now') {
+            $statusRows = $pdo->prepare(
+                'SELECT status, COUNT(*) AS count FROM deliveries WHERE post_id = :id GROUP BY status'
+            );
+            $statusRows->execute([':id' => $postId]);
+            $counts = ['pending' => 0, 'failed' => 0, 'sent' => 0];
+            foreach ($statusRows->fetchAll() as $row) {
+                $counts[$row['status']] = (int) $row['count'];
+            }
+
+            if ($counts['sent'] > 0) {
+                $status = 'shared';
+            } elseif ($counts['pending'] > 0) {
+                $status = 'scheduled';
+            } else {
+                $status = 'failed';
+            }
+        }
 
         return $response
-            ->withHeader('Location', "/articles/{$articleId}?saved=1")
+            ->withHeader('Location', $target . $sep . 'status=' . $status)
             ->withStatus(302);
     });
 
@@ -752,6 +1127,38 @@ return function (App $app): void {
         }
 
         $response->getBody()->write($summary);
+        return $response->withHeader('Content-Type', 'text/plain');
+    });
+
+    $app->post('/articles/{id}/comment', function ($request, $response, $args) {
+        $articleId = (int) ($args['id'] ?? 0);
+        $pdo = db_connection();
+
+        $data = (array) $request->getParsedBody();
+        $mode = trim((string) ($data['mode'] ?? 'comment'));
+        if (!in_array($mode, ['comment', 'summary', 'phrase'], true)) {
+            $mode = 'comment';
+        }
+
+        $stmt = $pdo->prepare('SELECT content_text FROM articles WHERE id = :id');
+        $stmt->execute([':id' => $articleId]);
+        $article = $stmt->fetch();
+
+        if (!$article) {
+            return $response->withStatus(404);
+        }
+
+        $content = (string) $article['content_text'];
+        $content = mb_substr($content, 0, 12000);
+
+        try {
+            $comment = generate_comment($content, $mode);
+        } catch (Throwable $e) {
+            $response->getBody()->write('Comment unavailable: ' . $e->getMessage());
+            return $response->withStatus(400)->withHeader('Content-Type', 'text/plain');
+        }
+
+        $response->getBody()->write($comment);
         return $response->withHeader('Content-Type', 'text/plain');
     });
 

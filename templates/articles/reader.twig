@@ -48,6 +48,7 @@
         <form method="post" action="/posts">
           <input type="hidden" name="_csrf" value="{{ csrf }}" />
           <input type="hidden" name="article_id" value="{{ article.id }}" />
+          <input type="hidden" name="return_to" value="/articles/{{ article.id }}" />
           <label>
             Comment
             <textarea name="comment" rows="6" style="width: 100%;"></textarea>
@@ -72,7 +73,8 @@
             {% endif %}
           </fieldset>
           <br />
-          <button type="submit">Save draft</button>
+          <button type="submit" name="action" value="schedule">Schedule</button>
+          <button type="submit" name="action" value="now" style="margin-left: 6px;">Share now</button>
         </form>
       </div>
     </aside>

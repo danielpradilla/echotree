@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 require __DIR__ . '/../app/db.php';
+require __DIR__ . '/../app/env.php';
+load_env(__DIR__ . '/../.env');
 
 $schemaPath = __DIR__ . '/schema.sql';
 if (!file_exists($schemaPath)) {

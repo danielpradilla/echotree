@@ -26,25 +26,34 @@ class LinkedInAdapter implements AdapterInterface
             'timeout' => 15,
         ]);
 
+        $payload = [
+            'author' => $authorUrn,
+            'lifecycleState' => 'PUBLISHED',
+            'specificContent' => [
+                'com.linkedin.ugc.ShareContent' => [
+                    'shareCommentary' => ['text' => $bodyText],
+                    'shareMediaCategory' => $url !== '' ? 'ARTICLE' : 'NONE',
+                ],
+            ],
+            'visibility' => [
+                'com.linkedin.ugc.MemberNetworkVisibility' => 'PUBLIC',
+            ],
+        ];
+
+        if ($url !== '') {
+            $payload['specificContent']['com.linkedin.ugc.ShareContent']['media'] = [[
+                'status' => 'READY',
+                'originalUrl' => $url,
+            ]];
+        }
+
         $resp = $client->post('https://api.linkedin.com/v2/ugcPosts', [
             'headers' => [
                 'Authorization' => 'Bearer ' . $token,
                 'X-Restli-Protocol-Version' => '2.0.0',
                 'Content-Type' => 'application/json',
             ],
-            'json' => [
-                'author' => $authorUrn,
-                'lifecycleState' => 'PUBLISHED',
-                'specificContent' => [
-                    'com.linkedin.ugc.ShareContent' => [
-                        'shareCommentary' => ['text' => $bodyText],
-                        'shareMediaCategory' => 'NONE',
-                    ],
-                ],
-                'visibility' => [
-                    'com.linkedin.ugc.MemberNetworkVisibility' => 'PUBLIC',
-                ],
-            ],
+            'json' => $payload,
         ]);
 
         $data = json_decode((string) $resp->getBody(), true);

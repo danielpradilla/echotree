@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 require __DIR__ . '/../app/db.php';
+require __DIR__ . '/../app/env.php';
+load_env(__DIR__ . '/../.env');
 
 if ($argc < 2) {
     fwrite(STDERR, "Usage: php scripts/set_password.php <username>\n");
