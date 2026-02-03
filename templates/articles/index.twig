@@ -36,10 +36,15 @@
       .inbox { grid-template-columns: 1fr; }
       .inbox__list { max-height: none; border-right: 0; padding-right: 0; }
       .inbox__iframe { height: 50vh; }
+      .inbox__toggle { display: inline-flex; }
+      .inbox__list.is-collapsed { display: none; }
     }
   </style>
 
   <div class="card">
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+      <button type="button" class="inbox__toggle" style="display: none;">Show list</button>
+    </div>
     <div class="inbox" style="margin-top: 12px;">
       <div class="inbox__list">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -214,6 +219,31 @@
   </div>
 
   <script>
+    (function () {
+      var toggle = document.querySelector('.inbox__toggle');
+      var list = document.querySelector('.inbox__list');
+      if (!toggle || !list) return;
+
+      function applyState() {
+        if (window.innerWidth <= 900) {
+          var collapsed = list.classList.contains('is-collapsed');
+          toggle.style.display = 'inline-flex';
+          toggle.textContent = collapsed ? 'Show list' : 'Hide list';
+        } else {
+          toggle.style.display = 'none';
+          list.classList.remove('is-collapsed');
+        }
+      }
+
+      toggle.addEventListener('click', function () {
+        list.classList.toggle('is-collapsed');
+        applyState();
+      });
+
+      window.addEventListener('resize', applyState);
+      applyState();
+    })();
+
     (function () {
       var button = document.querySelector('[data-generate-comment]');
       if (!button) return;

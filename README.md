@@ -155,6 +155,27 @@ ECHOTREE_BLUESKY_PDS=https://bsky.social
 ### Mastodon
 Use the Mastodon setup section below, then **Connect Mastodon** in `/accounts`.
 
+## Mastodon setup (OAuth app)
+
+Create an app on your Mastodon instance and set the redirect URI to your callback URL:
+
+```bash
+curl -X POST \
+  -F "client_name=EchoTree" \
+  -F "redirect_uris=https://yourdomain.com/echotree/oauth/callback" \
+  -F "scopes=read write" \
+  -F "website=https://yourdomain.com" \
+  https://YOUR_INSTANCE/api/v1/apps
+```
+
+Set the returned values in `.env`:
+
+```
+ECHOTREE_MASTODON_BASE_URL=https://YOUR_INSTANCE
+ECHOTREE_MASTODON_CLIENT_ID=...
+ECHOTREE_MASTODON_CLIENT_SECRET=...
+```
+
 ## Summaries
 
 - POST `/articles/{id}/summary` returns a cached summary or generates one on demand.

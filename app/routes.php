@@ -12,6 +12,7 @@ require_once __DIR__ . '/posts.php';
 require_once __DIR__ . '/summaries.php';
 require_once __DIR__ . '/oauth.php';
 require_once __DIR__ . '/comments.php';
+require_once __DIR__ . '/feed_fetcher.php';
 
 function base_path($request): string
 {
@@ -202,9 +203,11 @@ return function (App $app): void {
     $app->post('/feeds/{id}/fetch', function ($request, $response, $args) {
         $feedId = (int) ($args['id'] ?? 0);
         if ($feedId > 0) {
-            $cmd = 'php ' . escapeshellarg(__DIR__ . '/../scripts/fetch_feeds.php')
-                . ' --refresh --feed-id=' . (int) $feedId;
-            shell_exec($cmd);
+            $pdo = db_connection();
+            fetch_feeds($pdo, [
+                'refresh' => true,
+                'feed_id' => $feedId,
+            ]);
         }
 
         return $response
@@ -408,24 +411,26 @@ return function (App $app): void {
         $selectedId = isset($queryParams['selected']) ? (int) $queryParams['selected'] : null;
         $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'reader';
 
-        $feeds = $pdo->query('SELECT id, name FROM feeds ORDER BY name ASC')->fetchAll();
+        $feeds = $pdo->query("SELECT id, name FROM feeds WHERE url != 'manual://local' ORDER BY name ASC")->fetchAll();
 
         if ($feedId) {
             $stmt = $pdo->prepare(
                 'SELECT a.*, f.name AS feed_name '
                 . 'FROM articles a '
                 . 'JOIN feeds f ON f.id = a.feed_id '
-                . 'WHERE a.feed_id = :feed_id '
+                . 'WHERE a.feed_id = :feed_id AND f.url != :manual_url '
                 . 'ORDER BY a.is_read ASC, a.published_at DESC, a.created_at DESC'
             );
-            $stmt->execute([':feed_id' => $feedId]);
+            $stmt->execute([':feed_id' => $feedId, ':manual_url' => 'manual://local']);
         } else {
-            $stmt = $pdo->query(
+            $stmt = $pdo->prepare(
                 'SELECT a.*, f.name AS feed_name '
                 . 'FROM articles a '
                 . 'JOIN feeds f ON f.id = a.feed_id '
+                . 'WHERE f.url != :manual_url '
                 . 'ORDER BY a.is_read ASC, a.published_at DESC, a.created_at DESC'
             );
+            $stmt->execute([':manual_url' => 'manual://local']);
         }
 
         $articles = $stmt->fetchAll();
