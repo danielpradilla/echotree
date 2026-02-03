@@ -15,8 +15,15 @@ require __DIR__ . '/../vendor/autoload.php';
 
 $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
     || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] === '443');
+$sessionLifetime = (int) (getenv('ECHOTREE_SESSION_LIFETIME_SECONDS') ?: 0);
+if ($sessionLifetime < 0) {
+    $sessionLifetime = 0;
+}
+if ($sessionLifetime > 0) {
+    ini_set('session.gc_maxlifetime', (string) $sessionLifetime);
+}
 session_set_cookie_params([
-    'lifetime' => 0,
+    'lifetime' => $sessionLifetime,
     'path' => '/',
     'httponly' => true,
     'secure' => $isSecure,
