@@ -6,4 +6,8 @@
   RewriteEngine On
   RewriteRule ^(app|scripts|data|vendor|templates|tests|docs|backups|exports|logs)(/|$) - [F,L]
   RewriteRule ^(README|SPEC|TASKS|ARCHITECTURE|NOTES)\.md$ - [F,L]
+
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.php [L]
 </IfModule>
