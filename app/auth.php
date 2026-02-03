@@ -56,35 +56,63 @@ function is_login_throttled(string $username): bool
 
 function record_login_failure(string $username): void
 {
-    $pdo = db_connection();
-    ensure_login_attempts_table($pdo);
+    retry_db_write(function () use ($username) {
+        $pdo = db_connection();
+        ensure_login_attempts_table($pdo);
 
-    $stmt = $pdo->prepare('SELECT failed_count FROM login_attempts WHERE username = :username');
-    $stmt->execute([':username' => $username]);
-    $row = $stmt->fetch();
+        $stmt = $pdo->prepare('SELECT failed_count FROM login_attempts WHERE username = :username');
+        $stmt->execute([':username' => $username]);
+        $row = $stmt->fetch();
 
-    if ($row) {
-        $failed = (int) $row['failed_count'] + 1;
-        $update = $pdo->prepare(
-            "UPDATE login_attempts SET failed_count = :count, last_failed_at = datetime('now') "
-            . "WHERE username = :username"
-        );
-        $update->execute([':count' => $failed, ':username' => $username]);
-    } else {
-        $insert = $pdo->prepare(
-            "INSERT INTO login_attempts (username, failed_count, last_failed_at) "
-            . "VALUES (:username, 1, datetime('now'))"
-        );
-        $insert->execute([':username' => $username]);
-    }
+        if ($row) {
+            $failed = (int) $row['failed_count'] + 1;
+            $update = $pdo->prepare(
+                "UPDATE login_attempts SET failed_count = :count, last_failed_at = datetime('now') "
+                . "WHERE username = :username"
+            );
+            $update->execute([':count' => $failed, ':username' => $username]);
+        } else {
+            $insert = $pdo->prepare(
+                "INSERT INTO login_attempts (username, failed_count, last_failed_at) "
+                . "VALUES (:username, 1, datetime('now'))"
+            );
+            $insert->execute([':username' => $username]);
+        }
+    });
 }
 
 function clear_login_failures(string $username): void
 {
-    $pdo = db_connection();
-    ensure_login_attempts_table($pdo);
-    $stmt = $pdo->prepare('DELETE FROM login_attempts WHERE username = :username');
-    $stmt->execute([':username' => $username]);
+    retry_db_write(function () use ($username) {
+        $pdo = db_connection();
+        ensure_login_attempts_table($pdo);
+        $stmt = $pdo->prepare('DELETE FROM login_attempts WHERE username = :username');
+        $stmt->execute([':username' => $username]);
+    });
+}
+
+function retry_db_write(callable $fn): void
+{
+    $attempts = 0;
+    $max = 3;
+    $delayUs = 200000;
+
+    while (true) {
+        try {
+            $fn();
+            return;
+        } catch (PDOException $e) {
+            if (strpos($e->getMessage(), 'database is locked') === false) {
+                throw $e;
+            }
+            $attempts++;
+            if ($attempts >= $max) {
+                throw $e;
+            }
+            usleep($delayUs);
+            $delayUs *= 2;
+        }
+    }
 }
 
 function current_user(): ?array
