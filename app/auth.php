@@ -138,8 +138,12 @@ function require_login($request, $handler)
 
     if (!isset($_SESSION['user_id'])) {
         $response = new Slim\Psr7\Response();
-        $script = $_SERVER['SCRIPT_NAME'] ?? '';
-        $base = rtrim(str_replace('/index.php', '', $script), '/');
+    $script = $_SERVER['SCRIPT_NAME'] ?? '';
+    $base = rtrim(str_replace('/index.php', '', $script), '/');
+    $path = $request->getUri()->getPath();
+    if (str_ends_with($path, '/login')) {
+        return $handler->handle($request);
+    }
         return $response
             ->withHeader('Location', $base . '/login')
             ->withStatus(302);
