@@ -15,8 +15,8 @@ require_once __DIR__ . '/comments.php';
 
 function base_path($request): string
 {
-    $base = rtrim($request->getUri()->getBasePath(), '/');
-    return $base;
+    $script = $_SERVER['SCRIPT_NAME'] ?? '';
+    return rtrim(str_replace('/index.php', '', $script), '/');
 }
 
 function url_for($request, string $path): string
@@ -368,6 +368,7 @@ return function (App $app): void {
             'action' => "/accounts/{$accountId}/edit",
             'token_optional' => true,
             'csrf' => csrf_token(),
+            'base_path' => base_path($request),
         ]);
     });
 
@@ -462,6 +463,7 @@ return function (App $app): void {
             'error' => $queryParams['error'] ?? null,
             'post_details' => $postDetails,
             'csrf' => csrf_token(),
+            'base_path' => base_path($request),
         ]);
     });
 
@@ -632,6 +634,7 @@ return function (App $app): void {
             'error' => $error,
             'status' => $queryParams['status'] ?? null,
             'post_details' => $postDetails,
+            'base_path' => base_path($request),
         ]);
     });
 
@@ -645,10 +648,11 @@ return function (App $app): void {
             $baseUrl = getenv('ECHOTREE_MASTODON_BASE_URL') ?: '';
             $clientId = getenv('ECHOTREE_MASTODON_CLIENT_ID') ?: '';
             if ($baseUrl === '' || $clientId === '') {
-                return $view->render($response, 'oauth/error.twig', [
-                    'title' => 'Mastodon',
-                    'message' => 'Missing ECHOTREE_MASTODON_BASE_URL or ECHOTREE_MASTODON_CLIENT_ID.',
-                ])->withStatus(400);
+        return $view->render($response, 'oauth/error.twig', [
+            'title' => 'Mastodon',
+            'message' => 'Missing ECHOTREE_MASTODON_BASE_URL or ECHOTREE_MASTODON_CLIENT_ID.',
+            'base_path' => base_path($request),
+        ])->withStatus(400);
             }
 
             oauth_save_state('mastodon', ['state' => $state]);
@@ -668,6 +672,7 @@ return function (App $app): void {
                 return $view->render($response, 'oauth/error.twig', [
                     'title' => 'X',
                     'message' => 'Missing ECHOTREE_X_CLIENT_ID.',
+                    'base_path' => base_path($request),
                 ])->withStatus(400);
             }
 
@@ -697,6 +702,7 @@ return function (App $app): void {
                 return $view->render($response, 'oauth/error.twig', [
                     'title' => 'LinkedIn',
                     'message' => 'Missing ECHOTREE_LINKEDIN_CLIENT_ID.',
+                    'base_path' => base_path($request),
                 ])->withStatus(400);
             }
 
@@ -715,6 +721,7 @@ return function (App $app): void {
         return $view->render($response, 'oauth/error.twig', [
             'title' => 'OAuth',
             'message' => 'Unknown platform.',
+            'base_path' => base_path($request),
         ])->withStatus(404);
     });
 
@@ -798,6 +805,7 @@ return function (App $app): void {
             'csrf' => csrf_token(),
             'error' => $error,
             'pds' => getenv('ECHOTREE_BLUESKY_PDS') ?: 'https://bsky.social',
+            'base_path' => base_path($request),
         ]);
     });
 
@@ -812,6 +820,7 @@ return function (App $app): void {
             return $view->render($response, 'oauth/error.twig', [
                 'title' => 'OAuth',
                 'message' => 'Missing authorization code or state.',
+                'base_path' => base_path($request),
             ])->withStatus(400);
         }
 
@@ -825,6 +834,7 @@ return function (App $app): void {
                 return $view->render($response, 'oauth/error.twig', [
                     'title' => 'X',
                     'message' => 'Missing client ID or PKCE verifier.',
+                    'base_path' => base_path($request),
                 ])->withStatus(400);
             }
 
@@ -852,6 +862,7 @@ return function (App $app): void {
                 return $view->render($response, 'oauth/error.twig', [
                     'title' => 'X',
                     'message' => 'Token exchange failed.',
+                    'base_path' => base_path($request),
                 ])->withStatus(400);
             }
 
@@ -885,6 +896,7 @@ return function (App $app): void {
                 return $view->render($response, 'oauth/error.twig', [
                     'title' => 'LinkedIn',
                     'message' => 'Missing client ID or client secret.',
+                    'base_path' => base_path($request),
                 ])->withStatus(400);
             }
 
@@ -904,6 +916,7 @@ return function (App $app): void {
                 return $view->render($response, 'oauth/error.twig', [
                     'title' => 'LinkedIn',
                     'message' => 'Token exchange failed.',
+                    'base_path' => base_path($request),
                 ])->withStatus(400);
             }
 
@@ -931,6 +944,7 @@ return function (App $app): void {
                 return $view->render($response, 'oauth/error.twig', [
                     'title' => 'Mastodon',
                     'message' => 'Missing base URL or client credentials.',
+                    'base_path' => base_path($request),
                 ])->withStatus(400);
             }
 
@@ -951,6 +965,7 @@ return function (App $app): void {
                 return $view->render($response, 'oauth/error.twig', [
                     'title' => 'Mastodon',
                     'message' => 'Token exchange failed.',
+                    'base_path' => base_path($request),
                 ])->withStatus(400);
             }
 
@@ -967,6 +982,7 @@ return function (App $app): void {
         return $view->render($response, 'oauth/error.twig', [
             'title' => 'OAuth',
             'message' => 'Invalid or expired state.',
+            'base_path' => base_path($request),
         ])->withStatus(400);
     });
 
