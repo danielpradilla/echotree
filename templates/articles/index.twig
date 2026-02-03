@@ -43,7 +43,7 @@
     <div class="inbox" style="margin-top: 12px;">
       <div class="inbox__list">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <form method="get" action="/articles">
+          <form method="get" action="{{ base_path }}/articles">
             <label>
               Feed
               <select name="feed_id" onchange="this.form.submit()">
@@ -56,7 +56,7 @@
               </select>
             </label>
           </form>
-          <form method="post" action="/articles/mark-all-read">
+          <form method="post" action="{{ base_path }}/articles/mark-all-read">
             <input type="hidden" name="_csrf" value="{{ csrf }}" />
             {% if active_feed_id %}
               <input type="hidden" name="feed_id" value="{{ active_feed_id }}" />
@@ -72,7 +72,7 @@
             {% set is_selected = selected and selected.id == article.id %}
             <div class="inbox__item {% if is_selected %}active{% endif %}">
               <div>
-                <a href="/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ article.id }}">
+                <a href="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ article.id }}">
                   <strong>{{ article.title }}</strong>
                 </a>
               </div>
@@ -82,7 +82,7 @@
               </div>
               <div style="margin-top: 6px;">
                 <a href="{{ article.url }}" target="_blank" rel="noopener">Original</a>
-                <form method="post" action="/articles/{{ article.id }}/toggle-read" style="display: inline; margin-left: 8px;">
+                <form method="post" action="{{ base_path }}/articles/{{ article.id }}/toggle-read" style="display: inline; margin-left: 8px;">
                   <input type="hidden" name="_csrf" value="{{ csrf }}" />
                   <button type="submit">{{ article.is_read ? 'Mark unread' : 'Mark read' }}</button>
                 </form>
@@ -135,9 +135,9 @@
               {% if mode == 'reader' %}
                 <span class="muted">Reader</span>
                 <span class="muted" style="margin: 0 6px;">·</span>
-                <a href="/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode=original">Original</a>
+                <a href="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode=original">Original</a>
               {% else %}
-                <a href="/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode=reader">Reader</a>
+                <a href="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode=reader">Reader</a>
                 <span class="muted" style="margin: 0 6px;">·</span>
                 <span class="muted">Original</span>
               {% endif %}
@@ -149,7 +149,7 @@
           {% if mode == 'original' %}
             <iframe class="inbox__iframe" src="{{ selected.url }}" title="{{ selected.title }}"></iframe>
           {% else %}
-            <iframe class="inbox__iframe" src="/articles/{{ selected.id }}/embed" title="{{ selected.title }}"></iframe>
+            <iframe class="inbox__iframe" src="{{ base_path }}/articles/{{ selected.id }}/embed" title="{{ selected.title }}"></iframe>
           {% endif %}
 
           <div class="card">
@@ -157,10 +157,10 @@
               <strong>Schedule</strong>
               <span class="muted" style="font-size: 12px;">{{ selected.feed_name }}</span>
             </div>
-            <form method="post" action="/posts">
+            <form method="post" action="{{ base_path }}/posts">
               <input type="hidden" name="_csrf" value="{{ csrf }}" />
               <input type="hidden" name="article_id" value="{{ selected.id }}" />
-              <input type="hidden" name="return_to" value="/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode={{ mode }}" />
+              <input type="hidden" name="return_to" value="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode={{ mode }}" />
               <label>
                 Comment
                 <textarea id="article-comment" name="comment" rows="4" style="width: 100%;"></textarea>
@@ -220,6 +220,7 @@
       var status = document.querySelector('[data-comment-status]');
       var textarea = document.getElementById('article-comment');
       var csrf = '{{ csrf }}';
+      var basePath = '{{ base_path }}';
       var modeSelect = document.getElementById('article-generate-mode');
       var lengthEl = document.getElementById('article-comment-length');
       var scheduleInput = document.getElementById('article-schedule');
@@ -239,7 +240,7 @@
         if (modeSelect && modeSelect.value) {
           body.set('mode', modeSelect.value);
         }
-        fetch('/articles/' + articleId + '/comment', {
+        fetch(basePath + '/articles/' + articleId + '/comment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: body.toString()

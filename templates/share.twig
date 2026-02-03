@@ -22,7 +22,7 @@
   </style>
 
   <div class="card share">
-    <form method="post" action="/share">
+    <form method="post" action="{{ base_path }}/share">
       <input type="hidden" name="_csrf" value="{{ csrf }}" />
       <label>
         Paste a link
@@ -78,9 +78,9 @@
             {% if mode == 'reader' %}
               <span class="muted">Reader</span>
               <span class="muted" style="margin: 0 6px;">·</span>
-              <a href="/share?selected={{ selected.id }}&mode=original">Original</a>
+                <a href="{{ base_path }}/share?selected={{ selected.id }}&mode=original">Original</a>
             {% else %}
-              <a href="/share?selected={{ selected.id }}&mode=reader">Reader</a>
+              <a href="{{ base_path }}/share?selected={{ selected.id }}&mode=reader">Reader</a>
               <span class="muted" style="margin: 0 6px;">·</span>
               <span class="muted">Original</span>
             {% endif %}
@@ -92,17 +92,17 @@
         {% if mode == 'original' %}
           <iframe class="share__iframe" src="{{ selected.url }}" title="{{ selected.title }}"></iframe>
         {% else %}
-          <iframe class="share__iframe" src="/articles/{{ selected.id }}/embed" title="{{ selected.title }}"></iframe>
+          <iframe class="share__iframe" src="{{ base_path }}/articles/{{ selected.id }}/embed" title="{{ selected.title }}"></iframe>
         {% endif %}
 
         <div class="card">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <strong>Schedule</strong>
           </div>
-          <form method="post" action="/posts">
+          <form method="post" action="{{ base_path }}/posts">
             <input type="hidden" name="_csrf" value="{{ csrf }}" />
             <input type="hidden" name="article_id" value="{{ selected.id }}" />
-            <input type="hidden" name="return_to" value="/share?selected={{ selected.id }}&mode={{ mode }}" />
+            <input type="hidden" name="return_to" value="{{ base_path }}/share?selected={{ selected.id }}&mode={{ mode }}" />
             <label>
               Comment
               <textarea id="share-comment" name="comment" rows="4" style="width: 100%;"></textarea>
@@ -161,6 +161,7 @@
       var status = document.querySelector('[data-comment-status]');
       var textarea = document.getElementById('share-comment');
       var csrf = '{{ csrf }}';
+      var basePath = '{{ base_path }}';
       var modeSelect = document.getElementById('share-generate-mode');
       var lengthEl = document.getElementById('share-comment-length');
       var scheduleInput = document.getElementById('share-schedule');
@@ -180,7 +181,7 @@
         if (modeSelect && modeSelect.value) {
           body.set('mode', modeSelect.value);
         }
-        fetch('/articles/' + articleId + '/comment', {
+        fetch(basePath + '/articles/' + articleId + '/comment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: body.toString()

@@ -138,8 +138,9 @@ function require_login($request, $handler)
 
     if (!isset($_SESSION['user_id'])) {
         $response = new Slim\Psr7\Response();
+        $base = rtrim($request->getUri()->getBasePath(), '/');
         return $response
-            ->withHeader('Location', '/login')
+            ->withHeader('Location', $base . '/login')
             ->withStatus(302);
     }
 

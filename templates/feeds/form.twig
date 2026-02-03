@@ -5,7 +5,7 @@
     {% if error %}
       <p class="muted">{{ error }}</p>
     {% endif %}
-    <form method="post" action="{{ action }}">
+    <form method="post" action="{{ base_path }}{{ action }}">
       <input type="hidden" name="_csrf" value="{{ csrf }}" />
       <label>
         Name
@@ -23,7 +23,7 @@
       </label>
       <br /><br />
       <button type="submit">Save</button>
-      <a href="/feeds" style="margin-left: 8px;">Cancel</a>
+      <a href="{{ base_path }}/feeds" style="margin-left: 8px;">Cancel</a>
     </form>
   </div>
 {% endblock %}

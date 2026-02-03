@@ -3,7 +3,7 @@
 {% block content %}
   <div class="card">
     <div style="display: flex; justify-content: flex-end; align-items: center;">
-      <a href="/feeds/new">Add feed</a>
+      <a href="{{ base_path }}/feeds/new">Add feed</a>
     </div>
 
     {% if feeds|length == 0 %}
@@ -33,16 +33,16 @@
                 {{ feed.last_fetched_at ?: '—' }}
               </td>
               <td style="padding: 8px 4px;">
-                <a href="/feeds/{{ feed.id }}/edit">Edit</a>
-                <form method="post" action="/feeds/{{ feed.id }}/toggle" style="display: inline; margin-left: 6px;">
+                <a href="{{ base_path }}/feeds/{{ feed.id }}/edit">Edit</a>
+                <form method="post" action="{{ base_path }}/feeds/{{ feed.id }}/toggle" style="display: inline; margin-left: 6px;">
                   <input type="hidden" name="_csrf" value="{{ csrf }}" />
                   <button type="submit">{{ feed.is_active ? 'Disable' : 'Enable' }}</button>
                 </form>
-                <form method="post" action="/feeds/{{ feed.id }}/fetch" style="display: inline; margin-left: 6px;">
+                <form method="post" action="{{ base_path }}/feeds/{{ feed.id }}/fetch" style="display: inline; margin-left: 6px;">
                   <input type="hidden" name="_csrf" value="{{ csrf }}" />
                   <button type="submit">Fetch now</button>
                 </form>
-                <form method="post" action="/feeds/{{ feed.id }}/delete" style="display: inline; margin-left: 6px;">
+                <form method="post" action="{{ base_path }}/feeds/{{ feed.id }}/delete" style="display: inline; margin-left: 6px;">
                   <input type="hidden" name="_csrf" value="{{ csrf }}" />
                   <button type="submit">Delete</button>
                 </form>

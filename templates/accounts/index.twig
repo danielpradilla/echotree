@@ -3,7 +3,7 @@
 {% block content %}
   <div class="card">
     <div style="display: flex; justify-content: flex-end; align-items: center;">
-      <a href="/accounts/new">Add account</a>
+      <a href="{{ base_path }}/accounts/new">Add account</a>
     </div>
 
     {% if accounts|length == 0 %}
@@ -27,12 +27,12 @@
               <td style="padding: 8px 4px;">{{ account.handle }}</td>
               <td style="padding: 8px 4px;">{{ account.is_active ? 'Yes' : 'No' }}</td>
               <td style="padding: 8px 4px;">
-                <a href="/accounts/{{ account.id }}/edit">Edit</a>
-                <form method="post" action="/accounts/{{ account.id }}/toggle" style="display: inline; margin-left: 6px;">
+                <a href="{{ base_path }}/accounts/{{ account.id }}/edit">Edit</a>
+                <form method="post" action="{{ base_path }}/accounts/{{ account.id }}/toggle" style="display: inline; margin-left: 6px;">
                   <input type="hidden" name="_csrf" value="{{ csrf }}" />
                   <button type="submit">{{ account.is_active ? 'Disable' : 'Enable' }}</button>
                 </form>
-                <form method="post" action="/accounts/{{ account.id }}/delete" style="display: inline; margin-left: 6px;">
+                <form method="post" action="{{ base_path }}/accounts/{{ account.id }}/delete" style="display: inline; margin-left: 6px;">
                   <input type="hidden" name="_csrf" value="{{ csrf }}" />
                   <button type="submit">Delete</button>
                 </form>
@@ -47,10 +47,10 @@
     <div>
       <p class="muted">Connect an account:</p>
       <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-        <a href="/oauth/mastodon/start">Connect Mastodon</a>
-        <a href="/oauth/x/start">Connect X</a>
-        <a href="/oauth/linkedin/start">Connect LinkedIn</a>
-        <a href="/oauth/bluesky">Connect Bluesky</a>
+        <a href="{{ base_path }}/oauth/mastodon/start">Connect Mastodon</a>
+        <a href="{{ base_path }}/oauth/x/start">Connect X</a>
+        <a href="{{ base_path }}/oauth/linkedin/start">Connect LinkedIn</a>
+        <a href="{{ base_path }}/oauth/bluesky">Connect Bluesky</a>
       </div>
       <p class="muted" style="margin-top: 8px;">
         Callback URL: {{ oauth_callback }}

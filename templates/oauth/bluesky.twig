@@ -2,7 +2,7 @@
 
 {% block content %}
   <div class="card">
-    <form method="post" action="/oauth/bluesky">
+    <form method="post" action="{{ base_path }}/oauth/bluesky">
       <input type="hidden" name="_csrf" value="{{ csrf }}" />
       <label>
         Bluesky handle

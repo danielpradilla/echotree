@@ -45,10 +45,10 @@
         {% elseif error %}
           <p class="muted">Comment, schedule time, and at least one account are required.</p>
         {% endif %}
-        <form method="post" action="/posts">
+        <form method="post" action="{{ base_path }}/posts">
           <input type="hidden" name="_csrf" value="{{ csrf }}" />
           <input type="hidden" name="article_id" value="{{ article.id }}" />
-          <input type="hidden" name="return_to" value="/articles/{{ article.id }}" />
+          <input type="hidden" name="return_to" value="{{ base_path }}/articles/{{ article.id }}" />
           <label>
             Comment
             <textarea name="comment" rows="6" style="width: 100%;"></textarea>

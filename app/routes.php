@@ -13,6 +13,17 @@ require_once __DIR__ . '/summaries.php';
 require_once __DIR__ . '/oauth.php';
 require_once __DIR__ . '/comments.php';
 
+function base_path($request): string
+{
+    $base = rtrim($request->getUri()->getBasePath(), '/');
+    return $base;
+}
+
+function url_for($request, string $path): string
+{
+    return base_path($request) . $path;
+}
+
 return function (App $app): void {
     $app->add('require_login');
     $app->add('require_csrf');
@@ -78,7 +89,7 @@ return function (App $app): void {
             ]);
 
             return $response
-                ->withHeader('Location', '/feeds')
+                ->withHeader('Location', url_for($request, '/feeds'))
                 ->withStatus(302);
         }
 
@@ -147,7 +158,7 @@ return function (App $app): void {
             ]);
 
             return $response
-                ->withHeader('Location', '/feeds')
+                ->withHeader('Location', url_for($request, '/feeds'))
                 ->withStatus(302);
         }
 
@@ -166,7 +177,7 @@ return function (App $app): void {
         $stmt->execute([':id' => $feedId]);
 
         return $response
-            ->withHeader('Location', '/feeds')
+            ->withHeader('Location', url_for($request, '/feeds'))
             ->withStatus(302);
     });
 
@@ -184,7 +195,7 @@ return function (App $app): void {
         }
 
         return $response
-            ->withHeader('Location', '/feeds')
+            ->withHeader('Location', url_for($request, '/feeds'))
             ->withStatus(302);
     });
 
@@ -197,7 +208,7 @@ return function (App $app): void {
         }
 
         return $response
-            ->withHeader('Location', '/feeds')
+            ->withHeader('Location', url_for($request, '/feeds'))
             ->withStatus(302);
     });
 
@@ -264,7 +275,7 @@ return function (App $app): void {
             ]);
 
             return $response
-                ->withHeader('Location', '/accounts')
+                ->withHeader('Location', url_for($request, '/accounts'))
                 ->withStatus(302);
         }
 
@@ -347,7 +358,7 @@ return function (App $app): void {
             $update->execute($fields);
 
             return $response
-                ->withHeader('Location', '/accounts')
+                ->withHeader('Location', url_for($request, '/accounts'))
                 ->withStatus(302);
         }
 
@@ -367,7 +378,7 @@ return function (App $app): void {
         $stmt->execute([':id' => $accountId]);
 
         return $response
-            ->withHeader('Location', '/accounts')
+            ->withHeader('Location', url_for($request, '/accounts'))
             ->withStatus(302);
     });
 
@@ -385,7 +396,7 @@ return function (App $app): void {
         }
 
         return $response
-            ->withHeader('Location', '/accounts')
+            ->withHeader('Location', url_for($request, '/accounts'))
             ->withStatus(302);
     });
 
@@ -494,7 +505,7 @@ return function (App $app): void {
 
         $query = $feedId ? ('?feed_id=' . $feedId) : '';
         return $response
-            ->withHeader('Location', '/articles' . $query)
+            ->withHeader('Location', url_for($request, '/articles' . $query))
             ->withStatus(302);
     });
 
@@ -764,7 +775,7 @@ return function (App $app): void {
                             'refresh' => $refresh,
                         ]);
                         oauth_upsert_account('bluesky', $displayName, $handle, $payload);
-                        return $response->withHeader('Location', '/accounts')->withStatus(302);
+                        return $response->withHeader('Location', url_for($request, '/accounts'))->withStatus(302);
                     }
                 } catch (GuzzleHttp\Exception\RequestException $e) {
                     $body = '';
@@ -862,7 +873,7 @@ return function (App $app): void {
             }
 
             oauth_upsert_account('twitter', $name !== '' ? $name : $username, $username, $token);
-            return $response->withHeader('Location', '/accounts')->withStatus(302);
+            return $response->withHeader('Location', url_for($request, '/accounts'))->withStatus(302);
         }
 
         if (oauth_get_state('linkedin') && ($state === oauth_get_state('linkedin')['state'])) {
@@ -907,7 +918,7 @@ return function (App $app): void {
             $handle = $id !== '' ? $id : 'linkedin-user';
 
             oauth_upsert_account('linkedin', $display !== '' ? $display : $handle, $handle, $token);
-            return $response->withHeader('Location', '/accounts')->withStatus(302);
+            return $response->withHeader('Location', url_for($request, '/accounts'))->withStatus(302);
         }
 
         if (oauth_get_state('mastodon') && ($state === oauth_get_state('mastodon')['state'])) {
@@ -950,7 +961,7 @@ return function (App $app): void {
             $handle = (string) ($meData['acct'] ?? 'mastodon-user');
             $display = (string) ($meData['display_name'] ?? $handle);
             oauth_upsert_account('mastodon', $display, $handle, $token);
-            return $response->withHeader('Location', '/accounts')->withStatus(302);
+            return $response->withHeader('Location', url_for($request, '/accounts'))->withStatus(302);
         }
 
         return $view->render($response, 'oauth/error.twig', [
@@ -1228,7 +1239,7 @@ return function (App $app): void {
             if ($user) {
                 $_SESSION['user_id'] = $user['id'];
                 return $response
-                    ->withHeader('Location', '/')
+                    ->withHeader('Location', url_for($request, '/'))
                     ->withStatus(302);
             }
 
@@ -1248,7 +1259,7 @@ return function (App $app): void {
     $app->get('/logout', function ($request, $response) {
         session_destroy();
         return $response
-            ->withHeader('Location', '/login')
+            ->withHeader('Location', url_for($request, '/login'))
             ->withStatus(302);
     });
 };

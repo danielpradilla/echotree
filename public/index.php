@@ -29,6 +29,11 @@ $app = AppFactory::create();
 $twig = Twig::create(__DIR__ . '/../templates', [
     'cache' => false,
 ]);
+$basePath = $_SERVER['SCRIPT_NAME'] ?? '';
+$basePath = str_replace('/index.php', '', $basePath);
+$basePath = rtrim($basePath, '/');
+$app->setBasePath($basePath);
+$twig->addGlobal('base_path', $basePath);
 $app->add(TwigMiddleware::create($app, $twig));
 
 $routes = require __DIR__ . '/../app/routes.php';
