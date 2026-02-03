@@ -2,7 +2,7 @@
 
 Personal RSS → Social Publishing Console.
 
-EchoTree is a calm, self-hosted tool for reading articles and turning them into scheduled social posts. It is intentionally small, single-user, and boring.
+EchoTree is a self-hosted tool for reading articles and turning them into scheduled social posts. It is intentionally small, single-user, and boring.
 
 ## Local Development
 
