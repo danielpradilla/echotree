@@ -41,9 +41,13 @@
           <div class="card" style="margin-bottom: 12px;">
             <p class="muted">Article shared.</p>
           </div>
-        {% elseif status == 'scheduled' %}
+        {% elseif status == 'rate_limited' %}
           <div class="card" style="margin-bottom: 12px;">
             <p class="muted">Article scheduled (rate limit).</p>
+          </div>
+        {% elseif status == 'scheduled' %}
+          <div class="card" style="margin-bottom: 12px;">
+            <p class="muted">Article scheduled.</p>
           </div>
         {% elseif status == 'failed' %}
           <div class="card" style="margin-bottom: 12px;">

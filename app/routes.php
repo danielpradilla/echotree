@@ -1135,8 +1135,7 @@ return function (App $app): void {
         $postId = create_scheduled_post($articleId, $comment, $scheduledAt, $accountIds);
 
         if ($action === 'now') {
-            $cmd = 'php ' . escapeshellarg(__DIR__ . '/../scripts/publisher.php');
-            shell_exec($cmd);
+            publish_post_now($postId);
         }
 
         $target = $returnTo !== '' ? $returnTo : "/articles/{$articleId}";
@@ -1157,7 +1156,28 @@ return function (App $app): void {
             if ($counts['sent'] > 0) {
                 $status = 'shared';
             } elseif ($counts['pending'] > 0) {
-                $status = 'scheduled';
+                $rateLimitMinutes = (int) (getenv('ECHOTREE_RATE_LIMIT_MINUTES') ?: 10);
+                if ($rateLimitMinutes < 1) {
+                    $rateLimitMinutes = 10;
+                }
+
+                $rateLimitedStmt = $pdo->prepare(
+                    'SELECT COUNT(*) '
+                    . 'FROM deliveries d '
+                    . 'WHERE d.post_id = :post_id '
+                    . "AND d.status = 'pending' "
+                    . 'AND EXISTS ('
+                    . '  SELECT 1 FROM deliveries prev '
+                    . "  WHERE prev.account_id = d.account_id AND prev.status = 'sent' "
+                    . "  AND prev.sent_at >= datetime('now', :window)"
+                    . ')'
+                );
+                $rateLimitedStmt->execute([
+                    ':post_id' => $postId,
+                    ':window' => '-' . $rateLimitMinutes . ' minutes',
+                ]);
+                $rateLimitedCount = (int) $rateLimitedStmt->fetchColumn();
+                $status = $rateLimitedCount > 0 ? 'rate_limited' : 'scheduled';
             } else {
                 $status = 'failed';
             }
