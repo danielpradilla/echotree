@@ -47,6 +47,7 @@
         {% endif %}
         <form method="post" action="{{ base_path }}/posts">
           <input type="hidden" name="_csrf" value="{{ csrf }}" />
+          <input type="hidden" name="_submit_token" value="{{ submit_token }}" />
           <input type="hidden" name="article_id" value="{{ article.id }}" />
           <input type="hidden" name="return_to" value="{{ base_path }}/articles/{{ article.id }}" />
           <label>

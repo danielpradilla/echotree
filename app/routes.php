@@ -468,6 +468,7 @@ return function (App $app): void {
             'error' => $queryParams['error'] ?? null,
             'post_details' => $postDetails,
             'csrf' => csrf_token(),
+            'submit_token' => create_post_submit_token(),
             'base_path' => base_path($request),
         ]);
     });
@@ -636,6 +637,7 @@ return function (App $app): void {
             'accounts' => $accounts,
             'mode' => $mode === 'original' ? 'original' : 'reader',
             'csrf' => csrf_token(),
+            'submit_token' => create_post_submit_token(),
             'error' => $error,
             'status' => $queryParams['status'] ?? null,
             'post_details' => $postDetails,
@@ -1021,6 +1023,7 @@ return function (App $app): void {
             'saved' => $request->getQueryParams()['saved'] ?? null,
             'error' => $request->getQueryParams()['error'] ?? null,
             'csrf' => csrf_token(),
+            'submit_token' => create_post_submit_token(),
         ]);
     });
 
@@ -1108,13 +1111,20 @@ return function (App $app): void {
         $scheduledAt = trim((string) ($data['scheduled_at'] ?? ''));
         $action = trim((string) ($data['action'] ?? 'schedule'));
         $returnTo = trim((string) ($data['return_to'] ?? ''));
+        $submitToken = trim((string) ($data['_submit_token'] ?? ''));
         $accountIds = array_map('intval', (array) ($data['account_ids'] ?? []));
+        $target = $returnTo !== '' ? $returnTo : "/articles/{$articleId}";
+        $sep = str_contains($target, '?') ? '&' : '?';
+
+        if (!consume_post_submit_token($submitToken)) {
+            return $response
+                ->withHeader('Location', $target . $sep . 'status=duplicate_ignored')
+                ->withStatus(302);
+        }
 
         if ($articleId === 0 || $comment === '' || count($accountIds) === 0) {
-            $fallback = $returnTo !== '' ? $returnTo : "/articles/{$articleId}";
-            $sep = str_contains($fallback, '?') ? '&' : '?';
             return $response
-                ->withHeader('Location', $fallback . $sep . 'error=1')
+                ->withHeader('Location', $target . $sep . 'error=1')
                 ->withStatus(302);
         }
 
@@ -1123,10 +1133,8 @@ return function (App $app): void {
         } else {
             $dt = DateTime::createFromFormat('Y-m-d\\TH:i', $scheduledAt);
             if (!$dt) {
-                $fallback = $returnTo !== '' ? $returnTo : "/articles/{$articleId}";
-                $sep = str_contains($fallback, '?') ? '&' : '?';
                 return $response
-                    ->withHeader('Location', $fallback . $sep . 'error=1')
+                    ->withHeader('Location', $target . $sep . 'error=1')
                     ->withStatus(302);
             }
             $scheduledAt = $dt->format('Y-m-d H:i:s');
@@ -1138,8 +1146,6 @@ return function (App $app): void {
             publish_post_now($postId);
         }
 
-        $target = $returnTo !== '' ? $returnTo : "/articles/{$articleId}";
-        $sep = str_contains($target, '?') ? '&' : '?';
         $status = 'scheduled';
         $pdo = db_connection();
 
