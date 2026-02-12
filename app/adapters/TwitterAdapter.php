@@ -8,6 +8,9 @@ use GuzzleHttp\Client;
 
 class TwitterAdapter implements AdapterInterface
 {
+    private const MAX_TWEET_LENGTH = 280;
+    private const TCO_URL_LENGTH = 23;
+
     public function publish(string $text, string $url, array $account): string
     {
         $token = $account['oauth_token'] ?? '';
@@ -44,12 +47,39 @@ class TwitterAdapter implements AdapterInterface
 
     private function buildText(string $text, string $url): string
     {
-        $text = trim($text);
+        $text = preg_replace('/\s+/u', ' ', trim($text)) ?? trim($text);
         if ($url !== '') {
-            return trim($text . " " . $url);
+            $budget = self::MAX_TWEET_LENGTH - 1 - self::TCO_URL_LENGTH;
+            if ($budget < 0) {
+                $budget = 0;
+            }
+            $trimmed = $this->truncateText($text, $budget);
+            if ($trimmed === '') {
+                return $url;
+            }
+            return $trimmed . ' ' . $url;
         }
 
-        return $text;
+        return $this->truncateText($text, self::MAX_TWEET_LENGTH);
+    }
+
+    private function truncateText(string $text, int $maxChars): string
+    {
+        if ($maxChars <= 0) {
+            return '';
+        }
+
+        $text = trim($text);
+        if (mb_strlen($text) <= $maxChars) {
+            return $text;
+        }
+
+        if ($maxChars <= 3) {
+            return mb_substr($text, 0, $maxChars);
+        }
+
+        $slice = rtrim(mb_substr($text, 0, $maxChars - 3));
+        return $slice . '...';
     }
 
     private function buildAuthHeader(string $tokenPayload, string $method, string $url): string

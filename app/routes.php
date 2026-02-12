@@ -13,6 +13,7 @@ require_once __DIR__ . '/summaries.php';
 require_once __DIR__ . '/oauth.php';
 require_once __DIR__ . '/comments.php';
 require_once __DIR__ . '/feed_fetcher.php';
+require_once __DIR__ . '/article_extractor.php';
 
 function base_path($request): string
 {
@@ -537,6 +538,23 @@ return function (App $app): void {
                 $row = $exists->fetch();
                 if ($row) {
                     $selectedId = (int) $row['id'];
+                    $extracted = extract_article_from_url($url, 15);
+                    $title = trim((string) ($extracted['title'] ?? ''));
+                    $contentHtml = (string) ($extracted['content_html'] ?? '');
+                    $contentText = (string) ($extracted['content_text'] ?? '');
+
+                    if ($contentHtml !== '' || $contentText !== '' || $title !== '') {
+                        $update = $pdo->prepare(
+                            'UPDATE articles SET title = :title, content_html = :content_html, content_text = :content_text '
+                            . 'WHERE id = :id'
+                        );
+                        $update->execute([
+                            ':title' => $title !== '' ? $title : $url,
+                            ':content_html' => $contentHtml,
+                            ':content_text' => $contentText,
+                            ':id' => $selectedId,
+                        ]);
+                    }
                 } else {
                     $feedId = null;
                     $feedStmt = $pdo->prepare('SELECT id FROM feeds WHERE url = :url');
@@ -556,40 +574,10 @@ return function (App $app): void {
                         $feedId = (int) $pdo->lastInsertId();
                     }
 
-                    try {
-                        $client = new GuzzleHttp\Client(['timeout' => 15]);
-                        $resp = $client->get($url);
-                        $html = (string) $resp->getBody();
-                    } catch (Throwable $e) {
-                        $html = '';
-                    }
-
-                    $contentHtml = $html;
-                    $contentText = trim(strip_tags($html));
-
-                    if ($html !== '') {
-                        try {
-                            $config = new andreskrey\Readability\Configuration();
-                            $config->setFixRelativeURLs(true);
-                            $config->setOriginalURL(true);
-                            $readability = new andreskrey\Readability\Readability($config);
-                            $readability->parse($html);
-                            $contentNode = $readability->getContent();
-                            if ($contentNode) {
-                                $contentHtml = $contentNode->C14N();
-                                $contentText = trim(strip_tags($contentHtml));
-                            }
-                        } catch (Throwable $e) {
-                            // Fallback to raw HTML.
-                        }
-                    }
-
-                    $title = $url;
-                    if ($html !== '') {
-                        if (preg_match('/<title>(.*?)<\\/title>/si', $html, $matches)) {
-                            $title = trim(html_entity_decode($matches[1], ENT_QUOTES, 'UTF-8'));
-                        }
-                    }
+                    $extracted = extract_article_from_url($url, 15);
+                    $title = trim((string) ($extracted['title'] ?? ''));
+                    $contentHtml = (string) ($extracted['content_html'] ?? '');
+                    $contentText = (string) ($extracted['content_text'] ?? '');
 
                     $insertArticle = $pdo->prepare(
                         'INSERT INTO articles (feed_id, title, url, content_html, content_text, summary, published_at) '
