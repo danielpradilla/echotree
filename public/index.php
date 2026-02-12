@@ -41,6 +41,17 @@ $basePath = str_replace('/index.php', '', $basePath);
 $basePath = rtrim($basePath, '/');
 $app->setBasePath($basePath);
 $twig->getEnvironment()->addGlobal('base_path', $basePath);
+
+$appCommit = '';
+$gitDir = realpath(__DIR__ . '/..');
+if (is_string($gitDir) && $gitDir !== '') {
+    $hash = shell_exec('git -C ' . escapeshellarg($gitDir) . ' rev-parse --short HEAD 2>/dev/null');
+    if (is_string($hash)) {
+        $appCommit = trim($hash);
+    }
+}
+$twig->getEnvironment()->addGlobal('app_commit', $appCommit);
+
 $app->add(TwigMiddleware::create($app, $twig));
 
 $routes = require __DIR__ . '/../app/routes.php';

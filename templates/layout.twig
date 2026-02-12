@@ -65,6 +65,9 @@
       <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
         <div style="display: flex; align-items: baseline; gap: 10px;">
           <strong>EchoTree</strong>
+          {% if app_commit %}
+            <span class="muted" style="font-size: 12px;">({{ app_commit }})</span>
+          {% endif %}
           <span class="muted">/ {{ title }}</span>
         </div>
         <nav>
