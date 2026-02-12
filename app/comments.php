@@ -28,7 +28,35 @@ function is_unusable_phrase_response(string $text): bool
         }
     }
 
+    if (preg_match('/\b(sorry|unable|cannot|can\'t|script rather than|coherent sentences|let me know|assist)\b/u', $normalized) === 1) {
+        return true;
+    }
+
     return false;
+}
+
+function normalize_phrase_response(string $text): string
+{
+    $normalized = trim(preg_replace('/\s+/u', ' ', trim($text)) ?? '');
+    if ($normalized === '') {
+        return '';
+    }
+
+    $normalized = trim($normalized, " \t\n\r\0\x0B\"'`");
+    $parts = preg_split('/(?<=[\.\!\?])\s+/u', $normalized) ?: [];
+    foreach ($parts as $part) {
+        $candidate = trim($part);
+        if ($candidate === '') {
+            continue;
+        }
+
+        $length = mb_strlen($candidate);
+        if ($length >= 25 && $length <= 260) {
+            return $candidate;
+        }
+    }
+
+    return '';
 }
 
 function extract_impactful_fallback_sentence(string $content): string
@@ -145,8 +173,17 @@ function generate_comment(string $content, string $mode): string
     }
 
     $comment = trim($comment);
-    if ($mode === 'phrase' && is_unusable_phrase_response($comment)) {
-        return extract_impactful_fallback_sentence($content);
+    if ($mode === 'phrase') {
+        if (is_unusable_phrase_response($comment)) {
+            return extract_impactful_fallback_sentence($content);
+        }
+
+        $normalizedPhrase = normalize_phrase_response($comment);
+        if ($normalizedPhrase === '' || is_unusable_phrase_response($normalizedPhrase)) {
+            return extract_impactful_fallback_sentence($content);
+        }
+
+        return $normalizedPhrase;
     }
 
     return $comment;
