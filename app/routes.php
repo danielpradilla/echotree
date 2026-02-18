@@ -13,6 +13,7 @@ require_once __DIR__ . '/oauth.php';
 require_once __DIR__ . '/comments.php';
 require_once __DIR__ . '/feed_fetcher.php';
 require_once __DIR__ . '/article_extractor.php';
+require_once __DIR__ . '/repositories.php';
 
 require_once __DIR__ . '/routes/helpers.php';
 require_once __DIR__ . '/routes/core_routes.php';

@@ -14,46 +14,15 @@ function register_article_routes(App $app): void
         $selectedId = isset($queryParams['selected']) ? (int) $queryParams['selected'] : null;
         $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'reader';
 
-        $feeds = $pdo->query("SELECT id, name FROM feeds WHERE url != 'manual://local' ORDER BY name ASC")->fetchAll();
-
-        if ($feedId) {
-            $stmt = $pdo->prepare(
-                'SELECT a.*, f.name AS feed_name '
-                . 'FROM articles a '
-                . 'JOIN feeds f ON f.id = a.feed_id '
-                . 'WHERE a.feed_id = :feed_id AND f.url != :manual_url '
-                . 'ORDER BY a.is_read ASC, a.published_at DESC, a.created_at DESC'
-            );
-            $stmt->execute([':feed_id' => $feedId, ':manual_url' => 'manual://local']);
-        } else {
-            $stmt = $pdo->prepare(
-                'SELECT a.*, f.name AS feed_name '
-                . 'FROM articles a '
-                . 'JOIN feeds f ON f.id = a.feed_id '
-                . 'WHERE f.url != :manual_url '
-                . 'ORDER BY a.is_read ASC, a.published_at DESC, a.created_at DESC'
-            );
-            $stmt->execute([':manual_url' => 'manual://local']);
-        }
-
-        $articles = $stmt->fetchAll();
+        $feeds = list_non_manual_feeds($pdo);
+        $articles = list_articles_with_feed($pdo, $feedId);
 
         $selectedArticle = null;
         if ($selectedId) {
-            $sel = $pdo->prepare(
-                'SELECT a.*, f.name AS feed_name '
-                . 'FROM articles a '
-                . 'JOIN feeds f ON f.id = a.feed_id '
-                . 'WHERE a.id = :id'
-            );
-            $sel->execute([':id' => $selectedId]);
-            $selectedArticle = $sel->fetch() ?: null;
+            $selectedArticle = find_article_with_feed($pdo, $selectedId);
         }
 
-        $accounts = $pdo->query(
-            'SELECT id, platform, display_name, handle '
-            . 'FROM accounts WHERE is_active = 1 ORDER BY platform, display_name'
-        )->fetchAll();
+        $accounts = list_active_accounts($pdo);
 
         $postDetails = $_SESSION['last_post_details'] ?? null;
         unset($_SESSION['last_post_details'], $_SESSION['last_post_status']);
@@ -202,20 +171,10 @@ function register_article_routes(App $app): void
 
         $selectedArticle = null;
         if ($selectedId) {
-            $sel = $pdo->prepare(
-                'SELECT a.*, f.name AS feed_name '
-                . 'FROM articles a '
-                . 'JOIN feeds f ON f.id = a.feed_id '
-                . 'WHERE a.id = :id'
-            );
-            $sel->execute([':id' => $selectedId]);
-            $selectedArticle = $sel->fetch() ?: null;
+            $selectedArticle = find_article_with_feed($pdo, $selectedId);
         }
 
-        $accounts = $pdo->query(
-            'SELECT id, platform, display_name, handle '
-            . 'FROM accounts WHERE is_active = 1 ORDER BY platform, display_name'
-        )->fetchAll();
+        $accounts = list_active_accounts($pdo);
 
         $postDetails = $_SESSION['last_post_details'] ?? null;
         unset($_SESSION['last_post_details'], $_SESSION['last_post_status']);
@@ -239,23 +198,13 @@ function register_article_routes(App $app): void
         $articleId = (int) ($args['id'] ?? 0);
         $pdo = db_connection();
 
-        $stmt = $pdo->prepare(
-            'SELECT a.*, f.name AS feed_name '
-            . 'FROM articles a '
-            . 'JOIN feeds f ON f.id = a.feed_id '
-            . 'WHERE a.id = :id'
-        );
-        $stmt->execute([':id' => $articleId]);
-        $article = $stmt->fetch();
+        $article = find_article_with_feed($pdo, $articleId);
 
         if (!$article) {
             return $response->withStatus(404);
         }
 
-        $accounts = $pdo->query(
-            'SELECT id, platform, display_name, handle '
-            . 'FROM accounts WHERE is_active = 1 ORDER BY platform, display_name'
-        )->fetchAll();
+        $accounts = list_active_accounts($pdo);
 
         $view = Twig::fromRequest($request);
         return $view->render($response, 'articles/reader.twig', [
