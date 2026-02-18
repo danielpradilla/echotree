@@ -18,7 +18,10 @@ function ensure_login_attempts_table(PDO $pdo): void
 
 function login_rate_limit_minutes(): int
 {
-    $minutes = (int) (getenv('ECHOTREE_RATE_LIMIT_MINUTES') ?: 10);
+    $minutes = (int) (
+        getenv('ECHOTREE_LOGIN_THROTTLE_MINUTES')
+        ?: (getenv('ECHOTREE_RATE_LIMIT_MINUTES') ?: 10)
+    );
     return $minutes < 1 ? 10 : $minutes;
 }
 

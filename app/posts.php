@@ -93,7 +93,10 @@ function create_scheduled_post(int $articleId, string $comment, string $schedule
 
 function posting_rate_limit_minutes(): int
 {
-    $rateLimitMinutes = (int) (getenv('ECHOTREE_RATE_LIMIT_MINUTES') ?: 10);
+    $rateLimitMinutes = (int) (
+        getenv('ECHOTREE_POST_RATE_LIMIT_MINUTES')
+        ?: (getenv('ECHOTREE_RATE_LIMIT_MINUTES') ?: 10)
+    );
     return $rateLimitMinutes < 1 ? 10 : $rateLimitMinutes;
 }
 

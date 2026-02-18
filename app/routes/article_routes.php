@@ -353,10 +353,7 @@ function register_article_routes(App $app): void
             if ($counts['sent'] > 0) {
                 $status = 'shared';
             } elseif ($counts['pending'] > 0) {
-                $rateLimitMinutes = (int) (getenv('ECHOTREE_RATE_LIMIT_MINUTES') ?: 10);
-                if ($rateLimitMinutes < 1) {
-                    $rateLimitMinutes = 10;
-                }
+                $rateLimitMinutes = posting_rate_limit_minutes();
 
                 $rateLimitedStmt = $pdo->prepare(
                     'SELECT COUNT(*) '

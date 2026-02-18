@@ -86,7 +86,8 @@ Example cron entry (runs every 5 minutes):
 ## Environment Variables
 
 - `ECHOTREE_SECRET_KEY`: base64-encoded 32-byte key for encrypting OAuth tokens.
-- `ECHOTREE_RATE_LIMIT_MINUTES`: per-account posting limit (default: 10 minutes).
+- `ECHOTREE_POST_RATE_LIMIT_MINUTES`: per-account posting limit (default: 10 minutes).
+- `ECHOTREE_LOGIN_THROTTLE_MINUTES`: login lockout window after repeated failures (default: 10 minutes).
 - `ECHOTREE_FEED_MAX_ITEMS`: max articles per feed fetch (default: 30).
 - `ECHOTREE_SESSION_LIFETIME_SECONDS`: session cookie lifetime in seconds (default: session-only).
 - `ECHOTREE_MASTODON_BASE_URL`: base URL for your Mastodon instance (e.g., `https://mastodon.social`).
