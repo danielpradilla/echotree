@@ -90,6 +90,7 @@ Example cron entry (runs every 5 minutes):
 - `ECHOTREE_LOGIN_THROTTLE_MINUTES`: login lockout window after repeated failures (default: 10 minutes).
 - `ECHOTREE_FEED_MAX_ITEMS`: max articles per feed fetch (default: 30).
 - `ECHOTREE_SESSION_LIFETIME_SECONDS`: session cookie lifetime in seconds (default: session-only).
+- `ECHOTREE_REMEMBER_ME_SECONDS`: persistent remember-me login lifetime (default: 30 days).
 - `ECHOTREE_MASTODON_BASE_URL`: base URL for your Mastodon instance (e.g., `https://mastodon.social`).
 - `ECHOTREE_MASTODON_CLIENT_ID` / `ECHOTREE_MASTODON_CLIENT_SECRET`: Mastodon app credentials.
 - `ECHOTREE_BLUESKY_PDS`: Bluesky PDS base URL (defaults to `https://bsky.social`).

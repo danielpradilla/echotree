@@ -32,6 +32,8 @@ function register_core_routes(App $app): void
             $user = authenticate($username, $password);
             if ($user) {
                 $_SESSION['user_id'] = $user['id'];
+                issue_remember_me_token((int) $user['id']);
+                refresh_session_cookie();
                 return $response
                     ->withHeader('Location', url_for($request, '/'))
                     ->withStatus(302);
@@ -51,7 +53,7 @@ function register_core_routes(App $app): void
     });
 
     $app->get('/logout', function ($request, $response) {
-        session_destroy();
+        logout_current_user();
         return $response
             ->withHeader('Location', url_for($request, '/login'))
             ->withStatus(302);
