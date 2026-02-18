@@ -84,6 +84,49 @@ function extract_article_from_url(string $url, int $timeoutSeconds = 15): array
     ];
 }
 
+function extract_and_merge_article_content(
+    string $url,
+    string $fallbackTitle,
+    string $fallbackContentHtml,
+    int $timeoutSeconds = 15
+): array {
+    $extracted = extract_article_from_url($url, $timeoutSeconds);
+
+    $title = trim((string) ($extracted['title'] ?? ''));
+    if ($title === '' || $title === $url) {
+        $title = trim($fallbackTitle);
+    }
+    if ($title === '') {
+        $title = $url;
+    }
+
+    $contentHtml = trim((string) ($extracted['content_html'] ?? ''));
+    if ($contentHtml === '') {
+        $contentHtml = trim($fallbackContentHtml);
+    }
+
+    $contentText = trim((string) ($extracted['content_text'] ?? ''));
+    if ($contentText === '' && $contentHtml !== '') {
+        $contentText = normalize_extracted_text(strip_tags($contentHtml));
+    }
+
+    if ($fallbackContentHtml !== '') {
+        $fallbackText = normalize_extracted_text(strip_tags($fallbackContentHtml));
+        if (is_better_text_candidate($fallbackText, $contentText)) {
+            $contentText = $fallbackText;
+            if ($contentHtml === '') {
+                $contentHtml = $fallbackContentHtml;
+            }
+        }
+    }
+
+    return [
+        'title' => $title,
+        'content_html' => $contentHtml,
+        'content_text' => $contentText,
+    ];
+}
+
 function extract_title_from_html(string $html): string
 {
     if (preg_match('/<meta\\s+property=["\']og:title["\']\\s+content=["\'](.*?)["\']/si', $html, $m)) {

@@ -2,9 +2,7 @@
 
 declare(strict_types=1);
 
-use GuzzleHttp\Client;
-use andreskrey\Readability\Configuration;
-use andreskrey\Readability\Readability;
+require_once __DIR__ . '/article_extractor.php';
 
 function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): void
 {
@@ -31,17 +29,6 @@ function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): void
         }
         return;
     }
-
-    $client = new Client([
-        'timeout' => 15,
-        'headers' => [
-            'User-Agent' => 'EchoTree/1.0 (+https://example.com)',
-        ],
-    ]);
-
-    $config = new Configuration();
-    $config->setFixRelativeURLs(true);
-    $config->setOriginalURL(true);
 
     foreach ($feeds as $feed) {
         $feedId = (int) $feed['id'];
@@ -107,36 +94,10 @@ function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): void
                 $contentHtml = trim((string) $item->get_description());
             }
 
-            $contentText = trim(strip_tags($contentHtml));
-
-            if ($contentHtml === '' || mb_strlen($contentText) < 400) {
-                try {
-                    $resp = $client->get($url);
-                    $html = (string) $resp->getBody();
-                } catch (Throwable $e) {
-                    if ($log) {
-                        $log("  Failed to fetch article: {$url}\n");
-                    }
-                    continue;
-                }
-
-                try {
-                    $readability = new Readability($config);
-                    $readability->parse($html);
-                    $contentNode = $readability->getContent();
-                    if ($contentNode) {
-                        $contentHtml = $contentNode->C14N();
-                        $contentText = trim(strip_tags($contentHtml));
-                    }
-                } catch (Throwable $e) {
-                    // Fallback to raw HTML if extraction fails.
-                }
-
-                if ($contentHtml === '') {
-                    $contentHtml = $html;
-                    $contentText = trim(strip_tags($html));
-                }
-            }
+            $extracted = extract_and_merge_article_content($url, $title, $contentHtml, 15);
+            $title = trim((string) ($extracted['title'] ?? $title));
+            $contentHtml = (string) ($extracted['content_html'] ?? $contentHtml);
+            $contentText = (string) ($extracted['content_text'] ?? trim(strip_tags($contentHtml)));
 
             if ($existingId) {
                 $update = $pdo->prepare(
