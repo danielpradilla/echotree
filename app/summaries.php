@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/openai_client.php';
 
 function get_article_summary(int $articleId): ?string
 {
@@ -26,46 +27,5 @@ function save_article_summary(int $articleId, string $summary): void
 
 function generate_summary(string $content): string
 {
-    $apiKey = getenv('OPENAI_API_KEY') ?: '';
-    if ($apiKey === '') {
-        throw new RuntimeException('Missing OPENAI_API_KEY.');
-    }
-
-    $payload = [
-        'model' => 'gpt-4o-mini',
-        'input' => "Summarize the article in concise bullet points.\n\n" . $content,
-    ];
-
-    $ch = curl_init('https://api.openai.com/v1/responses');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_HTTPHEADER => [
-            'Authorization: Bearer ' . $apiKey,
-            'Content-Type: application/json',
-        ],
-        CURLOPT_POSTFIELDS => json_encode($payload),
-        CURLOPT_TIMEOUT => 30,
-    ]);
-
-    $raw = curl_exec($ch);
-    if ($raw === false) {
-        throw new RuntimeException('OpenAI request failed.');
-    }
-
-    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($status < 200 || $status >= 300) {
-        throw new RuntimeException('OpenAI request returned status ' . $status);
-    }
-
-    $data = json_decode($raw, true);
-    $summary = $data['output'][0]['content'][0]['text'] ?? '';
-
-    if ($summary === '') {
-        throw new RuntimeException('OpenAI response missing summary.');
-    }
-
-    return $summary;
+    return openai_generate_text("Summarize the article in concise bullet points.\n\n" . $content);
 }
