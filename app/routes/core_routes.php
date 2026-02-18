@@ -8,11 +8,9 @@ use Slim\Views\Twig;
 function register_core_routes(App $app): void
 {
     $app->get('/', function ($request, $response) {
-        $view = Twig::fromRequest($request);
-        return $view->render($response, 'home.twig', [
-            'title' => 'EchoTree',
-            'csrf' => csrf_token(),
-        ]);
+        return $response
+            ->withHeader('Location', url_for($request, '/scheduled'))
+            ->withStatus(302);
     });
 
     $app->map(['GET', 'POST'], '/login', function ($request, $response) {

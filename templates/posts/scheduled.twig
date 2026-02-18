@@ -1,0 +1,83 @@
+{% extends "layout.twig" %}
+
+{% block content %}
+  <div class="card">
+    <h2 style="margin-top: 0;">Scheduled Shares</h2>
+    {% if updated %}
+      <p class="muted">Scheduled post updated.</p>
+    {% endif %}
+    {% if cancelled %}
+      <p class="muted">Scheduled post cancelled.</p>
+    {% endif %}
+    {% if error %}
+      <p class="muted">Update failed: {{ error }}.</p>
+    {% endif %}
+
+    {% if posts|length == 0 %}
+      <p class="muted">No scheduled posts right now.</p>
+    {% else %}
+      {% for post in posts %}
+        <div id="post-{{ post.id }}" style="border: 1px solid #bcbd8b; border-radius: 10px; padding: 14px; margin: 0 0 14px 0;">
+          <div style="display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+            <div>
+              <strong>{{ post.article_title }}</strong>
+              <div class="muted" style="font-size: 12px;">
+                Scheduled: {{ post.scheduled_at }} · Status: {{ post.status }} · Post #{{ post.id }}
+              </div>
+            </div>
+            <div>
+              <a href="{{ post.article_url }}" target="_blank" rel="noopener">Open article</a>
+            </div>
+          </div>
+
+          <form method="post" action="{{ base_path }}/scheduled/{{ post.id }}/update" style="margin-top: 10px;">
+            <input type="hidden" name="_csrf" value="{{ csrf }}" />
+            <label>
+              Comment
+              <textarea name="comment" rows="3" style="width: 100%;">{{ post.comment }}</textarea>
+            </label>
+            <div style="margin-top: 8px;">
+              <label>
+                Scheduled for
+                <input type="datetime-local" name="scheduled_at" value="{{ post.scheduled_at_input }}" />
+              </label>
+            </div>
+            <div style="margin-top: 8px;">
+              <strong style="font-size: 14px;">Networks</strong>
+              <div class="muted" style="font-size: 12px;">Only active accounts can be selected.</div>
+              <div style="margin-top: 4px;">
+                {% for account in accounts %}
+                  {% set checked = account.id in post.selected_account_ids %}
+                  <label style="display: block;">
+                    <input type="checkbox" name="account_ids[]" value="{{ account.id }}" {% if checked %}checked{% endif %} />
+                    {{ account.platform }} · {{ account.display_name }} ({{ account.handle }})
+                  </label>
+                {% endfor %}
+              </div>
+            </div>
+            <div style="margin-top: 10px;">
+              <button type="submit">Save changes</button>
+            </div>
+          </form>
+          <form method="post" action="{{ base_path }}/scheduled/{{ post.id }}/cancel" style="margin-top: 8px;">
+            <input type="hidden" name="_csrf" value="{{ csrf }}" />
+            <button type="submit">Cancel scheduled post</button>
+          </form>
+
+          {% if post.deliveries|length > 0 %}
+            <div style="margin-top: 8px;">
+              <div class="muted" style="font-size: 12px;">Current delivery records:</div>
+              <ul style="margin: 6px 0 0 18px;">
+                {% for d in post.deliveries %}
+                  <li class="muted">
+                    {{ d.platform }} · {{ d.handle }} — {{ d.status }}{% if d.error %} ({{ d.error }}){% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+{% endblock %}

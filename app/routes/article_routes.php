@@ -185,6 +185,176 @@ function register_article_routes(App $app): void
         ]);
     });
 
+    $app->get('/scheduled', function ($request, $response) {
+        $pdo = db_connection();
+        $posts = list_scheduled_posts($pdo);
+        $accounts = list_active_accounts($pdo);
+
+        foreach ($posts as &$post) {
+            $deliveries = list_post_deliveries($pdo, (int) $post['id']);
+            $post['deliveries'] = $deliveries;
+            $post['scheduled_at_input'] = substr(str_replace(' ', 'T', (string) $post['scheduled_at']), 0, 16);
+            $selected = [];
+            foreach ($deliveries as $delivery) {
+                if (in_array((string) $delivery['status'], ['pending', 'failed'], true)) {
+                    $selected[] = (int) $delivery['account_id'];
+                }
+            }
+            $post['selected_account_ids'] = $selected;
+        }
+        unset($post);
+
+        $queryParams = $request->getQueryParams();
+        $view = Twig::fromRequest($request);
+        return $view->render($response, 'posts/scheduled.twig', [
+            'title' => 'Scheduled',
+            'posts' => $posts,
+            'accounts' => $accounts,
+            'updated' => ($queryParams['updated'] ?? '') === '1',
+            'cancelled' => ($queryParams['cancelled'] ?? '') === '1',
+            'error' => (string) ($queryParams['error'] ?? ''),
+            'csrf' => csrf_token(),
+            'base_path' => base_path($request),
+        ]);
+    });
+
+    $app->post('/scheduled/{id}/update', function ($request, $response, $args) {
+        $postId = (int) ($args['id'] ?? 0);
+        $data = (array) $request->getParsedBody();
+        $comment = trim((string) ($data['comment'] ?? ''));
+        $scheduledAtRaw = trim((string) ($data['scheduled_at'] ?? ''));
+        $rawAccountIds = array_map('intval', (array) ($data['account_ids'] ?? []));
+        $accountIds = array_values(array_unique(array_filter($rawAccountIds, fn ($id) => $id > 0)));
+
+        $targetBase = url_for($request, '/scheduled');
+        $targetAnchor = '#post-' . $postId;
+        if ($postId <= 0 || $comment === '' || $scheduledAtRaw === '' || count($accountIds) === 0) {
+            return $response
+                ->withHeader('Location', $targetBase . '?error=invalid_input' . $targetAnchor)
+                ->withStatus(302);
+        }
+
+        $scheduledAtDt = DateTime::createFromFormat('Y-m-d\\TH:i', $scheduledAtRaw);
+        if (!$scheduledAtDt) {
+            return $response
+                ->withHeader('Location', $targetBase . '?error=invalid_schedule' . $targetAnchor)
+                ->withStatus(302);
+        }
+        $scheduledAt = $scheduledAtDt->format('Y-m-d H:i:s');
+
+        $pdo = db_connection();
+        $postStmt = $pdo->prepare("SELECT id FROM posts WHERE id = :id AND status = 'scheduled'");
+        $postStmt->execute([':id' => $postId]);
+        if (!$postStmt->fetch()) {
+            return $response
+                ->withHeader('Location', $targetBase . '?error=not_editable' . $targetAnchor)
+                ->withStatus(302);
+        }
+
+        $activeAccountStmt = $pdo->query('SELECT id FROM accounts WHERE is_active = 1');
+        $activeAccountIds = array_map('intval', array_column($activeAccountStmt->fetchAll(), 'id'));
+        $accountIds = array_values(array_intersect($accountIds, $activeAccountIds));
+        if (count($accountIds) === 0) {
+            return $response
+                ->withHeader('Location', $targetBase . '?error=no_active_accounts' . $targetAnchor)
+                ->withStatus(302);
+        }
+
+        $pdo->beginTransaction();
+        try {
+            $updatePost = $pdo->prepare(
+                'UPDATE posts SET comment = :comment, scheduled_at = :scheduled_at WHERE id = :id'
+            );
+            $updatePost->execute([
+                ':comment' => $comment,
+                ':scheduled_at' => $scheduledAt,
+                ':id' => $postId,
+            ]);
+
+            $unsentDeliveries = $pdo->prepare(
+                "SELECT id, account_id FROM deliveries WHERE post_id = :post_id AND status IN ('pending', 'failed')"
+            );
+            $unsentDeliveries->execute([':post_id' => $postId]);
+            $existingUnsent = $unsentDeliveries->fetchAll();
+            $existingByAccount = [];
+            foreach ($existingUnsent as $delivery) {
+                $existingByAccount[(int) $delivery['account_id']] = (int) $delivery['id'];
+            }
+
+            foreach ($existingByAccount as $accountId => $deliveryId) {
+                if (!in_array($accountId, $accountIds, true)) {
+                    $delete = $pdo->prepare('DELETE FROM deliveries WHERE id = :id');
+                    $delete->execute([':id' => $deliveryId]);
+                }
+            }
+
+            $existingAnyStmt = $pdo->prepare('SELECT account_id FROM deliveries WHERE post_id = :post_id');
+            $existingAnyStmt->execute([':post_id' => $postId]);
+            $existingAny = array_map('intval', array_column($existingAnyStmt->fetchAll(), 'account_id'));
+
+            $insert = $pdo->prepare(
+                "INSERT INTO deliveries (post_id, account_id, status) VALUES (:post_id, :account_id, 'pending')"
+            );
+            foreach ($accountIds as $accountId) {
+                if (!in_array($accountId, $existingAny, true)) {
+                    $insert->execute([
+                        ':post_id' => $postId,
+                        ':account_id' => $accountId,
+                    ]);
+                }
+            }
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            return $response
+                ->withHeader('Location', $targetBase . '?error=save_failed' . $targetAnchor)
+                ->withStatus(302);
+        }
+
+        return $response
+            ->withHeader('Location', url_for($request, '/scheduled') . '?updated=1#post-' . $postId)
+            ->withStatus(302);
+    });
+
+    $app->post('/scheduled/{id}/cancel', function ($request, $response, $args) {
+        $postId = (int) ($args['id'] ?? 0);
+        $targetBase = url_for($request, '/scheduled');
+        $targetAnchor = '#post-' . $postId;
+        if ($postId <= 0) {
+            return $response
+                ->withHeader('Location', $targetBase . '?error=invalid_input')
+                ->withStatus(302);
+        }
+
+        $pdo = db_connection();
+        $postStmt = $pdo->prepare("SELECT id FROM posts WHERE id = :id AND status = 'scheduled'");
+        $postStmt->execute([':id' => $postId]);
+        if (!$postStmt->fetch()) {
+            return $response
+                ->withHeader('Location', $targetBase . '?error=not_editable' . $targetAnchor)
+                ->withStatus(302);
+        }
+
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare("UPDATE posts SET status = 'cancelled' WHERE id = :id")
+                ->execute([':id' => $postId]);
+            $pdo->prepare("DELETE FROM deliveries WHERE post_id = :post_id AND status IN ('pending', 'failed')")
+                ->execute([':post_id' => $postId]);
+            $pdo->commit();
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            return $response
+                ->withHeader('Location', $targetBase . '?error=save_failed' . $targetAnchor)
+                ->withStatus(302);
+        }
+
+        return $response
+            ->withHeader('Location', $targetBase . '?cancelled=1')
+            ->withStatus(302);
+    });
+
     $app->get('/articles/{id}', function ($request, $response, $args) {
         $articleId = (int) ($args['id'] ?? 0);
         $pdo = db_connection();

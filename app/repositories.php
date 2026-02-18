@@ -54,3 +54,29 @@ function list_active_accounts(PDO $pdo): array
         . 'FROM accounts WHERE is_active = 1 ORDER BY platform, display_name'
     )->fetchAll();
 }
+
+function list_scheduled_posts(PDO $pdo): array
+{
+    $stmt = $pdo->query(
+        "SELECT p.id, p.article_id, p.comment, p.scheduled_at, p.status, p.created_at, "
+        . "a.title AS article_title, a.url AS article_url "
+        . "FROM posts p "
+        . "JOIN articles a ON a.id = p.article_id "
+        . "WHERE p.status = 'scheduled' "
+        . "ORDER BY p.scheduled_at ASC, p.id ASC"
+    );
+    return $stmt->fetchAll();
+}
+
+function list_post_deliveries(PDO $pdo, int $postId): array
+{
+    $stmt = $pdo->prepare(
+        'SELECT d.id, d.account_id, d.status, d.error, a.platform, a.display_name, a.handle '
+        . 'FROM deliveries d '
+        . 'JOIN accounts a ON a.id = d.account_id '
+        . 'WHERE d.post_id = :post_id '
+        . 'ORDER BY d.id ASC'
+    );
+    $stmt->execute([':post_id' => $postId]);
+    return $stmt->fetchAll();
+}
