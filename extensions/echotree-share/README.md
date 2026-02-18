@@ -26,16 +26,6 @@ It opens your existing EchoTree `/share` page with the current tab URL prefilled
 3. Click **Load unpacked**.
 4. Select folder: `extensions/echotree-share`.
 
-## Install in Safari (via Safari Web Extension)
-
-Safari uses the same WebExtension source, wrapped in an Xcode project.
-
-1. Run:
-   - `xcrun safari-web-extension-converter extensions/echotree-share`
-2. Open generated Xcode project.
-3. Build and run the extension target.
-4. Enable extension in Safari settings.
-
 ## Security model
 
 - No new EchoTree write API is exposed.

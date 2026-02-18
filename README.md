@@ -202,22 +202,34 @@ ECHOTREE_MASTODON_CLIENT_SECRET=...
 
 ## iOS Shortcut (share to EchoTree)
 
-Create a Shortcut that takes the shared URL and opens the Share page:
+Use this if you want fast sharing from Safari on iPhone/iPad without building an app extension.
 
-1) In Shortcuts, create a new shortcut.
-2) Add action: “Get URLs from Input”.
-3) Add action: “URL Encode”.
-4) Add action: “Open URL” with:
+Steps:
 
-```
+1) Open the **Shortcuts** app and create a new shortcut (for example: `Share to EchoTree`).
+2) Open shortcut details (`i` button) and enable:
+   - **Show in Share Sheet**
+   - **Receive**: `URLs`
+3) Add actions in this order:
+   - `Get URLs from Input`
+   - `URL Encode`
+   - `Open URLs`
+4) In the `Open URLs` action, pass this value:
+
+```text
 https://your-domain.com/share?url={{URL Encode}}
 ```
 
-Now you can use the Share Sheet in Safari/Reader and jump directly to the preview + schedule screen.
+5) Test from Safari:
+   - Open any article page.
+   - Tap Share.
+   - Run `Share to EchoTree`.
 
-## Browser Extension (Chrome + Safari, hybrid)
+Result: EchoTree opens `/share` with the URL prefilled so you can schedule, pick networks, and generate AI summary/comment.
 
-Use the WebExtension in `extensions/echotree-share` to quickly send the current page to EchoTree.
+## Browser Extension (Chrome, hybrid)
+
+Use the extension in `extensions/echotree-share` to quickly send the current page to EchoTree.
 
 How it works:
 
@@ -232,9 +244,10 @@ Setup:
    - Open `chrome://extensions`
    - Enable Developer mode
    - Load unpacked extension from `extensions/echotree-share`
-3) Safari install:
-   - Run `xcrun safari-web-extension-converter extensions/echotree-share`
-   - Open generated Xcode project and run extension target
+3) Configure extension domain:
+   - Open the extension popup
+   - Click **Settings**
+   - Set **EchoTree Base URL** (example: `https://your-domain.com` or `http://localhost:8000`)
 
 Security note:
 
