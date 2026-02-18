@@ -45,33 +45,22 @@ function register_article_routes(App $app): void
         ]);
     });
 
-    $app->post('/articles/{id}/toggle-read', function ($request, $response, $args) {
+    $archiveArticle = function ($request, $response, $args) {
         $articleId = (int) ($args['id'] ?? 0);
         $pdo = db_connection();
-
-        $stmt = $pdo->prepare('SELECT is_read FROM articles WHERE id = :id');
-        $stmt->execute([':id' => $articleId]);
-        $article = $stmt->fetch();
-
-        if ($article) {
-            $next = ((int) $article['is_read']) === 1 ? 0 : 1;
-            if ($next === 1) {
-                $delete = $pdo->prepare('DELETE FROM articles WHERE id = :id');
-                $delete->execute([':id' => $articleId]);
-            } else {
-                $update = $pdo->prepare('UPDATE articles SET is_read = :is_read WHERE id = :id');
-                $update->execute([':is_read' => $next, ':id' => $articleId]);
-            }
-        }
+        $delete = $pdo->prepare('DELETE FROM articles WHERE id = :id');
+        $delete->execute([':id' => $articleId]);
 
         $referer = $request->getHeaderLine('Referer');
         $redirect = $referer !== '' ? $referer : '/articles';
         return $response
             ->withHeader('Location', $redirect)
             ->withStatus(302);
-    });
+    };
+    $app->post('/articles/{id}/archive', $archiveArticle);
+    $app->post('/articles/{id}/toggle-read', $archiveArticle);
 
-    $app->post('/articles/mark-all-read', function ($request, $response) {
+    $archiveAll = function ($request, $response) {
         $data = (array) $request->getParsedBody();
         $feedId = isset($data['feed_id']) ? (int) $data['feed_id'] : null;
         $pdo = db_connection();
@@ -87,7 +76,9 @@ function register_article_routes(App $app): void
         return $response
             ->withHeader('Location', url_for($request, '/articles' . $query))
             ->withStatus(302);
-    });
+    };
+    $app->post('/articles/archive-all', $archiveAll);
+    $app->post('/articles/mark-all-read', $archiveAll);
 
     $app->map(['GET', 'POST'], '/share', function ($request, $response) {
         $pdo = db_connection();

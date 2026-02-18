@@ -61,12 +61,12 @@
               </select>
             </label>
           </form>
-          <form method="post" action="{{ base_path }}/articles/mark-all-read">
+          <form method="post" action="{{ base_path }}/articles/archive-all">
             <input type="hidden" name="_csrf" value="{{ csrf }}" />
             {% if active_feed_id %}
               <input type="hidden" name="feed_id" value="{{ active_feed_id }}" />
             {% endif %}
-            <button type="submit">Mark all read</button>
+            <button type="submit">Archive all</button>
           </form>
         </div>
 
@@ -87,9 +87,9 @@
               </div>
               <div style="margin-top: 6px;">
                 <a href="{{ article.url }}" target="_blank" rel="noopener">Original</a>
-                <form method="post" action="{{ base_path }}/articles/{{ article.id }}/toggle-read" style="display: inline; margin-left: 8px;">
+                <form method="post" action="{{ base_path }}/articles/{{ article.id }}/archive" style="display: inline; margin-left: 8px;">
                   <input type="hidden" name="_csrf" value="{{ csrf }}" />
-                  <button type="submit">{{ article.is_read ? 'Mark unread' : 'Mark read' }}</button>
+                  <button type="submit">Archive</button>
                 </form>
               </div>
             </div>
