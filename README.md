@@ -214,3 +214,29 @@ https://your-domain.com/share?url={{URL Encode}}
 ```
 
 Now you can use the Share Sheet in Safari/Reader and jump directly to the preview + schedule screen.
+
+## Browser Extension (Chrome + Safari, hybrid)
+
+Use the WebExtension in `extensions/echotree-share` to quickly send the current page to EchoTree.
+
+How it works:
+
+- The extension opens your existing EchoTree UI at:
+  - `/share?url=<current_tab_url>`
+- You continue in EchoTree to schedule time, choose networks, and generate summary/comment with AI.
+
+Setup:
+
+1) Configure extension settings with your EchoTree base URL (example: `https://your-domain.com` or `http://localhost:8000`).
+2) Chrome install:
+   - Open `chrome://extensions`
+   - Enable Developer mode
+   - Load unpacked extension from `extensions/echotree-share`
+3) Safari install:
+   - Run `xcrun safari-web-extension-converter extensions/echotree-share`
+   - Open generated Xcode project and run extension target
+
+Security note:
+
+- This hybrid approach does not expose a new posting API.
+- It reuses your existing session + CSRF protections in EchoTree.
