@@ -189,26 +189,38 @@ function register_article_routes(App $app): void
         $pdo = db_connection();
         $posts = list_scheduled_posts($pdo);
         $accounts = list_active_accounts($pdo);
+        $queryParams = $request->getQueryParams();
+        $selectedId = isset($queryParams['selected']) ? (int) $queryParams['selected'] : 0;
+        if ($selectedId === 0 && count($posts) > 0) {
+            $selectedId = (int) $posts[0]['id'];
+        }
 
-        foreach ($posts as &$post) {
+        $selectedPost = null;
+        foreach ($posts as $post) {
+            if ((int) $post['id'] !== $selectedId) {
+                continue;
+            }
             $deliveries = list_post_deliveries($pdo, (int) $post['id']);
-            $post['deliveries'] = $deliveries;
-            $post['scheduled_at_input'] = substr(str_replace(' ', 'T', (string) $post['scheduled_at']), 0, 16);
             $selected = [];
             foreach ($deliveries as $delivery) {
                 if (in_array((string) $delivery['status'], ['pending', 'failed'], true)) {
                     $selected[] = (int) $delivery['account_id'];
                 }
             }
-            $post['selected_account_ids'] = $selected;
-        }
-        unset($post);
 
-        $queryParams = $request->getQueryParams();
+            $selectedPost = $post;
+            $selectedPost['deliveries'] = $deliveries;
+            $selectedPost['scheduled_at_input'] = substr(str_replace(' ', 'T', (string) $post['scheduled_at']), 0, 16);
+            $selectedPost['selected_account_ids'] = $selected;
+            break;
+        }
+
         $view = Twig::fromRequest($request);
         return $view->render($response, 'posts/scheduled.twig', [
             'title' => 'Scheduled',
             'posts' => $posts,
+            'selected_id' => $selectedId,
+            'selected_post' => $selectedPost,
             'accounts' => $accounts,
             'updated' => ($queryParams['updated'] ?? '') === '1',
             'cancelled' => ($queryParams['cancelled'] ?? '') === '1',
@@ -227,17 +239,17 @@ function register_article_routes(App $app): void
         $accountIds = array_values(array_unique(array_filter($rawAccountIds, fn ($id) => $id > 0)));
 
         $targetBase = url_for($request, '/scheduled');
-        $targetAnchor = '#post-' . $postId;
+        $selectedQuery = '&selected=' . $postId;
         if ($postId <= 0 || $comment === '' || $scheduledAtRaw === '' || count($accountIds) === 0) {
             return $response
-                ->withHeader('Location', $targetBase . '?error=invalid_input' . $targetAnchor)
+                ->withHeader('Location', $targetBase . '?error=invalid_input' . $selectedQuery)
                 ->withStatus(302);
         }
 
         $scheduledAtDt = DateTime::createFromFormat('Y-m-d\\TH:i', $scheduledAtRaw);
         if (!$scheduledAtDt) {
             return $response
-                ->withHeader('Location', $targetBase . '?error=invalid_schedule' . $targetAnchor)
+                ->withHeader('Location', $targetBase . '?error=invalid_schedule' . $selectedQuery)
                 ->withStatus(302);
         }
         $scheduledAt = $scheduledAtDt->format('Y-m-d H:i:s');
@@ -247,7 +259,7 @@ function register_article_routes(App $app): void
         $postStmt->execute([':id' => $postId]);
         if (!$postStmt->fetch()) {
             return $response
-                ->withHeader('Location', $targetBase . '?error=not_editable' . $targetAnchor)
+                ->withHeader('Location', $targetBase . '?error=not_editable' . $selectedQuery)
                 ->withStatus(302);
         }
 
@@ -256,7 +268,7 @@ function register_article_routes(App $app): void
         $accountIds = array_values(array_intersect($accountIds, $activeAccountIds));
         if (count($accountIds) === 0) {
             return $response
-                ->withHeader('Location', $targetBase . '?error=no_active_accounts' . $targetAnchor)
+                ->withHeader('Location', $targetBase . '?error=no_active_accounts' . $selectedQuery)
                 ->withStatus(302);
         }
 
@@ -308,19 +320,19 @@ function register_article_routes(App $app): void
         } catch (Throwable $e) {
             $pdo->rollBack();
             return $response
-                ->withHeader('Location', $targetBase . '?error=save_failed' . $targetAnchor)
+                ->withHeader('Location', $targetBase . '?error=save_failed' . $selectedQuery)
                 ->withStatus(302);
         }
 
         return $response
-            ->withHeader('Location', url_for($request, '/scheduled') . '?updated=1#post-' . $postId)
+            ->withHeader('Location', url_for($request, '/scheduled') . '?updated=1&selected=' . $postId)
             ->withStatus(302);
     });
 
     $app->post('/scheduled/{id}/cancel', function ($request, $response, $args) {
         $postId = (int) ($args['id'] ?? 0);
         $targetBase = url_for($request, '/scheduled');
-        $targetAnchor = '#post-' . $postId;
+        $selectedQuery = '&selected=' . $postId;
         if ($postId <= 0) {
             return $response
                 ->withHeader('Location', $targetBase . '?error=invalid_input')
@@ -332,7 +344,7 @@ function register_article_routes(App $app): void
         $postStmt->execute([':id' => $postId]);
         if (!$postStmt->fetch()) {
             return $response
-                ->withHeader('Location', $targetBase . '?error=not_editable' . $targetAnchor)
+                ->withHeader('Location', $targetBase . '?error=not_editable' . $selectedQuery)
                 ->withStatus(302);
         }
 
@@ -346,7 +358,7 @@ function register_article_routes(App $app): void
         } catch (Throwable $e) {
             $pdo->rollBack();
             return $response
-                ->withHeader('Location', $targetBase . '?error=save_failed' . $targetAnchor)
+                ->withHeader('Location', $targetBase . '?error=save_failed' . $selectedQuery)
                 ->withStatus(302);
         }
 
