@@ -6,28 +6,28 @@
     <title>{{ title }}</title>
     <style>
       :root {
-        --bg: #f6f0e6;
-        --bg-accent: #efe3d2;
-        --ink: #1f2f2d;
-        --accent: #a55a3b;
-        --accent-strong: #8f472b;
-        --muted: #65706b;
-        --card: rgba(255, 250, 243, 0.9);
-        --card-solid: #fffaf3;
-        --border: #d8c5af;
-        --line-soft: #e8d8c5;
-        --selection: #f3dfc5;
-        --field: #fffdf9;
-        --shadow: rgba(56, 34, 24, 0.12);
-        --shadow-soft: rgba(56, 34, 24, 0.06);
+        --bg: #fffdf6;
+        --bg-accent: #faf6e9;
+        --ink: #30462c;
+        --accent: #a0c878;
+        --accent-strong: #7daa53;
+        --muted: #6d7c5d;
+        --card: rgba(250, 246, 233, 0.92);
+        --card-solid: #faf6e9;
+        --border: #ddeb9d;
+        --line-soft: rgba(160, 200, 120, 0.34);
+        --selection: rgba(221, 235, 157, 0.56);
+        --field: #fffdf6;
+        --shadow: rgba(92, 122, 72, 0.12);
+        --shadow-soft: rgba(92, 122, 72, 0.07);
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
         font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
         background:
-          radial-gradient(circle at top left, rgba(255, 255, 255, 0.72), transparent 32%),
-          linear-gradient(180deg, var(--bg) 0%, #f2e7d8 100%);
+          radial-gradient(circle at top left, rgba(255, 255, 255, 0.88), transparent 32%),
+          linear-gradient(180deg, var(--bg) 0%, var(--bg-accent) 100%);
         background-color: var(--bg);
         color: var(--ink);
       }
@@ -64,7 +64,7 @@
       .hero-card {
         padding: 32px;
         background:
-          linear-gradient(135deg, rgba(255, 250, 243, 0.95), rgba(244, 230, 211, 0.88));
+          linear-gradient(135deg, rgba(255, 253, 246, 0.96), rgba(221, 235, 157, 0.5));
       }
       .accent { color: var(--accent); }
       .muted { color: var(--muted); }
@@ -105,7 +105,7 @@
         color: var(--ink);
       }
       input:focus, select:focus, textarea:focus {
-        outline: 2px solid rgba(165, 90, 59, 0.16);
+        outline: 2px solid rgba(160, 200, 120, 0.22);
         border-color: var(--accent);
       }
       textarea {
@@ -254,8 +254,8 @@
         gap: 6px;
         padding: 4px 10px;
         border-radius: 999px;
-        background: rgba(165, 90, 59, 0.1);
-        color: var(--accent-strong);
+        background: rgba(160, 200, 120, 0.18);
+        color: #56723c;
         font-size: 12px;
         font-weight: 700;
         letter-spacing: 0.04em;
