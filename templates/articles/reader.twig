@@ -76,8 +76,8 @@
             <textarea name="comment" rows="6" style="width: 100%;"></textarea>
           </label>
           <label>
-            Schedule
-            <input id="reader-schedule" type="datetime-local" name="scheduled_at" />
+            Schedule ({{ schedule_timezone }})
+            <input id="reader-schedule" type="datetime-local" name="scheduled_at" value="{{ default_schedule_input }}" />
           </label>
           <fieldset>
             <legend>Accounts</legend>
@@ -102,13 +102,4 @@
       </div>
     </aside>
   </div>
-  <script>
-    (function () {
-      var scheduleInput = document.getElementById('reader-schedule');
-      if (scheduleInput && !scheduleInput.value) {
-        var now = new Date(Date.now() + 5 * 60 * 1000);
-        scheduleInput.value = now.toISOString().slice(0, 16);
-      }
-    })();
-  </script>
 {% endblock %}

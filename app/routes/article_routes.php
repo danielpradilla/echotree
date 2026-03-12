@@ -5,6 +5,66 @@ declare(strict_types=1);
 use Slim\App;
 use Slim\Views\Twig;
 
+function echotree_schedule_timezone_id(): string
+{
+    $tz = trim((string) (getenv('ECHOTREE_SCHEDULE_TIMEZONE') ?: 'Europe/Paris'));
+    return $tz !== '' ? $tz : 'Europe/Paris';
+}
+
+function echotree_schedule_timezone(): DateTimeZone
+{
+    try {
+        return new DateTimeZone(echotree_schedule_timezone_id());
+    } catch (Throwable $e) {
+        return new DateTimeZone('Europe/Paris');
+    }
+}
+
+function echotree_schedule_default_input(): string
+{
+    $dt = new DateTime('now', echotree_schedule_timezone());
+    $dt->modify('+1 hour');
+    return $dt->format('Y-m-d\\TH:i');
+}
+
+function echotree_schedule_input_to_utc(string $rawInput): ?string
+{
+    $dt = DateTime::createFromFormat('Y-m-d\\TH:i', $rawInput, echotree_schedule_timezone());
+    if (!$dt) {
+        return null;
+    }
+
+    $errors = DateTime::getLastErrors();
+    if ($errors !== false && (($errors['warning_count'] ?? 0) > 0 || ($errors['error_count'] ?? 0) > 0)) {
+        return null;
+    }
+
+    $dt->setTimezone(new DateTimeZone('UTC'));
+    return $dt->format('Y-m-d H:i:s');
+}
+
+function echotree_schedule_utc_to_input(string $utcValue): string
+{
+    $dt = DateTime::createFromFormat('Y-m-d H:i:s', $utcValue, new DateTimeZone('UTC'));
+    if (!$dt) {
+        return '';
+    }
+
+    $dt->setTimezone(echotree_schedule_timezone());
+    return $dt->format('Y-m-d\\TH:i');
+}
+
+function echotree_schedule_utc_to_display(string $utcValue): string
+{
+    $dt = DateTime::createFromFormat('Y-m-d H:i:s', $utcValue, new DateTimeZone('UTC'));
+    if (!$dt) {
+        return $utcValue;
+    }
+
+    $dt->setTimezone(echotree_schedule_timezone());
+    return $dt->format('Y-m-d H:i');
+}
+
 function register_article_routes(App $app): void
 {
     $app->get('/articles', function ($request, $response) {
@@ -42,6 +102,8 @@ function register_article_routes(App $app): void
             'csrf' => csrf_token(),
             'submit_token' => create_post_submit_token(),
             'base_path' => base_path($request),
+            'default_schedule_input' => echotree_schedule_default_input(),
+            'schedule_timezone' => echotree_schedule_timezone_id(),
         ]);
     });
 
@@ -182,6 +244,8 @@ function register_article_routes(App $app): void
             'status' => $queryParams['status'] ?? null,
             'post_details' => $postDetails,
             'base_path' => base_path($request),
+            'default_schedule_input' => echotree_schedule_default_input(),
+            'schedule_timezone' => echotree_schedule_timezone_id(),
         ]);
     });
 
@@ -196,6 +260,10 @@ function register_article_routes(App $app): void
         }
 
         $selectedPost = null;
+        foreach ($posts as &$post) {
+            $post['scheduled_at_local'] = echotree_schedule_utc_to_display((string) $post['scheduled_at']);
+        }
+        unset($post);
         foreach ($posts as $post) {
             if ((int) $post['id'] !== $selectedId) {
                 continue;
@@ -210,7 +278,7 @@ function register_article_routes(App $app): void
 
             $selectedPost = $post;
             $selectedPost['deliveries'] = $deliveries;
-            $selectedPost['scheduled_at_input'] = substr(str_replace(' ', 'T', (string) $post['scheduled_at']), 0, 16);
+            $selectedPost['scheduled_at_input'] = echotree_schedule_utc_to_input((string) $post['scheduled_at']);
             $selectedPost['selected_account_ids'] = $selected;
             break;
         }
@@ -227,6 +295,7 @@ function register_article_routes(App $app): void
             'error' => (string) ($queryParams['error'] ?? ''),
             'csrf' => csrf_token(),
             'base_path' => base_path($request),
+            'schedule_timezone' => echotree_schedule_timezone_id(),
         ]);
     });
 
@@ -246,13 +315,12 @@ function register_article_routes(App $app): void
                 ->withStatus(302);
         }
 
-        $scheduledAtDt = DateTime::createFromFormat('Y-m-d\\TH:i', $scheduledAtRaw);
-        if (!$scheduledAtDt) {
+        $scheduledAt = echotree_schedule_input_to_utc($scheduledAtRaw);
+        if ($scheduledAt === null) {
             return $response
                 ->withHeader('Location', $targetBase . '?error=invalid_schedule' . $selectedQuery)
                 ->withStatus(302);
         }
-        $scheduledAt = $scheduledAtDt->format('Y-m-d H:i:s');
 
         $pdo = db_connection();
         $postStmt = $pdo->prepare("SELECT id FROM posts WHERE id = :id AND status = 'scheduled'");
@@ -388,6 +456,8 @@ function register_article_routes(App $app): void
             'error' => $request->getQueryParams()['error'] ?? null,
             'csrf' => csrf_token(),
             'submit_token' => create_post_submit_token(),
+            'default_schedule_input' => echotree_schedule_default_input(),
+            'schedule_timezone' => echotree_schedule_timezone_id(),
         ]);
     });
 
@@ -493,74 +563,81 @@ function register_article_routes(App $app): void
         }
 
         if ($action === 'now') {
-            $scheduledAt = date('Y-m-d H:i:s');
+            $scheduledAt = gmdate('Y-m-d H:i:s');
         } else {
-            $dt = DateTime::createFromFormat('Y-m-d\\TH:i', $scheduledAt);
-            if (!$dt) {
+            $parsedScheduleAt = echotree_schedule_input_to_utc($scheduledAt);
+            if ($parsedScheduleAt === null) {
                 return $response
                     ->withHeader('Location', $target . $sep . 'error=1')
                     ->withStatus(302);
             }
-            $scheduledAt = $dt->format('Y-m-d H:i:s');
+            $scheduledAt = $parsedScheduleAt;
         }
 
-        $postId = create_scheduled_post($articleId, $comment, $scheduledAt, $accountIds);
+        try {
+            $postId = create_scheduled_post($articleId, $comment, $scheduledAt, $accountIds);
 
-        if ($action === 'now') {
-            publish_post_now($postId);
-        }
-
-        $status = 'scheduled';
-        $pdo = db_connection();
-
-        if ($action === 'now') {
-            $statusRows = $pdo->prepare(
-                'SELECT status, COUNT(*) AS count FROM deliveries WHERE post_id = :id GROUP BY status'
-            );
-            $statusRows->execute([':id' => $postId]);
-            $counts = ['pending' => 0, 'failed' => 0, 'sent' => 0];
-            foreach ($statusRows->fetchAll() as $row) {
-                $counts[$row['status']] = (int) $row['count'];
+            if ($action === 'now') {
+                publish_post_now($postId);
             }
 
-            if ($counts['sent'] > 0) {
-                $status = 'shared';
-            } elseif ($counts['pending'] > 0) {
-                $rateLimitMinutes = posting_rate_limit_minutes();
+            $status = 'scheduled';
+            $pdo = db_connection();
 
-                $rateLimitedStmt = $pdo->prepare(
-                    'SELECT COUNT(*) '
-                    . 'FROM deliveries d '
-                    . 'WHERE d.post_id = :post_id '
-                    . "AND d.status = 'pending' "
-                    . 'AND EXISTS ('
-                    . '  SELECT 1 FROM deliveries prev '
-                    . "  WHERE prev.account_id = d.account_id AND prev.status = 'sent' "
-                    . "  AND prev.sent_at >= datetime('now', :window)"
-                    . ')'
+            if ($action === 'now') {
+                $statusRows = $pdo->prepare(
+                    'SELECT status, COUNT(*) AS count FROM deliveries WHERE post_id = :id GROUP BY status'
                 );
-                $rateLimitedStmt->execute([
-                    ':post_id' => $postId,
-                    ':window' => '-' . $rateLimitMinutes . ' minutes',
-                ]);
-                $rateLimitedCount = (int) $rateLimitedStmt->fetchColumn();
-                $status = $rateLimitedCount > 0 ? 'rate_limited' : 'scheduled';
-            } else {
-                $status = 'failed';
+                $statusRows->execute([':id' => $postId]);
+                $counts = ['pending' => 0, 'failed' => 0, 'sent' => 0];
+                foreach ($statusRows->fetchAll() as $row) {
+                    $counts[$row['status']] = (int) $row['count'];
+                }
+
+                if ($counts['sent'] > 0) {
+                    $status = 'shared';
+                } elseif ($counts['pending'] > 0) {
+                    $rateLimitMinutes = posting_rate_limit_minutes();
+
+                    $rateLimitedStmt = $pdo->prepare(
+                        'SELECT COUNT(*) '
+                        . 'FROM deliveries d '
+                        . 'WHERE d.post_id = :post_id '
+                        . "AND d.status = 'pending' "
+                        . 'AND EXISTS ('
+                        . '  SELECT 1 FROM deliveries prev '
+                        . "  WHERE prev.account_id = d.account_id AND prev.status = 'sent' "
+                        . "  AND prev.sent_at >= datetime('now', :window)"
+                        . ')'
+                    );
+                    $rateLimitedStmt->execute([
+                        ':post_id' => $postId,
+                        ':window' => '-' . $rateLimitMinutes . ' minutes',
+                    ]);
+                    $rateLimitedCount = (int) $rateLimitedStmt->fetchColumn();
+                    $status = $rateLimitedCount > 0 ? 'rate_limited' : 'scheduled';
+                } else {
+                    $status = 'failed';
+                }
             }
+
+            $detailStmt = $pdo->prepare(
+                'SELECT d.status, d.error, a.platform FROM deliveries d '
+                . 'JOIN accounts a ON a.id = d.account_id WHERE d.post_id = :id'
+            );
+            $detailStmt->execute([':id' => $postId]);
+            $_SESSION['last_post_details'] = $detailStmt->fetchAll();
+            $_SESSION['last_post_status'] = $status;
+
+            return $response
+                ->withHeader('Location', $target . $sep . 'status=' . $status)
+                ->withStatus(302);
+        } catch (Throwable $e) {
+            error_log('Failed creating/publishing post: ' . $e->getMessage());
+            return $response
+                ->withHeader('Location', $target . $sep . 'status=failed')
+                ->withStatus(302);
         }
-
-        $detailStmt = $pdo->prepare(
-            'SELECT d.status, d.error, a.platform FROM deliveries d '
-            . 'JOIN accounts a ON a.id = d.account_id WHERE d.post_id = :id'
-        );
-        $detailStmt->execute([':id' => $postId]);
-        $_SESSION['last_post_details'] = $detailStmt->fetchAll();
-        $_SESSION['last_post_status'] = $status;
-
-        return $response
-            ->withHeader('Location', $target . $sep . 'status=' . $status)
-            ->withStatus(302);
     });
 
     $app->post('/articles/{id}/summary', function ($request, $response, $args) {

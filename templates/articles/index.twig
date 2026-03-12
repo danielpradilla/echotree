@@ -217,8 +217,8 @@
                 <span class="muted" data-comment-status></span>
               </div>
               <label>
-                Schedule
-                <input id="article-schedule" type="datetime-local" name="scheduled_at" />
+                Schedule ({{ schedule_timezone }})
+                <input id="article-schedule" type="datetime-local" name="scheduled_at" value="{{ default_schedule_input }}" />
               </label>
               <fieldset>
                 <legend>Accounts</legend>
@@ -285,12 +285,6 @@
       var basePath = '{{ base_path }}';
       var modeSelect = document.getElementById('article-generate-mode');
       var lengthEl = document.getElementById('article-comment-length');
-      var scheduleInput = document.getElementById('article-schedule');
-
-      if (scheduleInput && !scheduleInput.value) {
-        var now = new Date(Date.now() + 5 * 60 * 1000);
-        scheduleInput.value = now.toISOString().slice(0, 16);
-      }
 
       button.addEventListener('click', function () {
         var articleId = button.getAttribute('data-article-id');

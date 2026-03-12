@@ -235,20 +235,24 @@ function process_post_deliveries(
                 "UPDATE deliveries SET status = 'sent', sent_at = datetime('now'), external_id = :external_id, error = NULL "
                 . 'WHERE id = :id'
             );
-            $update->execute([
-                ':external_id' => $externalId,
-                ':id' => $deliveryId,
-            ]);
+            run_sqlite_write_with_retry(static function () use ($update, $externalId, $deliveryId): void {
+                $update->execute([
+                    ':external_id' => $externalId,
+                    ':id' => $deliveryId,
+                ]);
+            }, 'delivery_sent post=' . $postId . ' delivery=' . $deliveryId . ' platform=' . $platform);
 
             publish_log($log, "Sent: post {$postId} to {$platform}\n");
         } catch (Throwable $e) {
             $update = $pdo->prepare(
                 "UPDATE deliveries SET status = 'failed', error = :error WHERE id = :id"
             );
-            $update->execute([
-                ':error' => $e->getMessage(),
-                ':id' => $deliveryId,
-            ]);
+            run_sqlite_write_with_retry(static function () use ($update, $e, $deliveryId): void {
+                $update->execute([
+                    ':error' => $e->getMessage(),
+                    ':id' => $deliveryId,
+                ]);
+            }, 'delivery_failed post=' . $postId . ' delivery=' . $deliveryId . ' platform=' . $platform);
 
             publish_log($log, "Failed: post {$postId} to {$platform} ({$e->getMessage()})\n");
         }
@@ -266,11 +270,61 @@ function process_post_deliveries(
     }
 
     if ($counts['failed'] > 0) {
-        $pdo->prepare("UPDATE posts SET status = 'failed' WHERE id = :id")
-            ->execute([':id' => $postId]);
+        $updatePost = $pdo->prepare("UPDATE posts SET status = 'failed' WHERE id = :id");
+        run_sqlite_write_with_retry(static function () use ($updatePost, $postId): void {
+            $updatePost->execute([':id' => $postId]);
+        }, 'post_failed post=' . $postId);
     } else {
-        $pdo->prepare("UPDATE posts SET status = 'sent' WHERE id = :id")
-            ->execute([':id' => $postId]);
+        $updatePost = $pdo->prepare("UPDATE posts SET status = 'sent' WHERE id = :id");
+        run_sqlite_write_with_retry(static function () use ($updatePost, $postId): void {
+            $updatePost->execute([':id' => $postId]);
+        }, 'post_sent post=' . $postId);
+    }
+}
+
+function run_sqlite_write_with_retry(
+    callable $fn,
+    string $operation = 'sqlite_write',
+    int $maxAttempts = 5,
+    int $baseDelayMs = 120
+): void
+{
+    $attempt = 0;
+    $start = microtime(true);
+    while (true) {
+        try {
+            $fn();
+            if ($attempt > 0) {
+                $elapsedMs = (int) round((microtime(true) - $start) * 1000);
+                error_log(
+                    '[echotree] sqlite lock recovered operation=' . $operation
+                    . ' retries=' . $attempt
+                    . ' elapsed_ms=' . $elapsedMs
+                );
+            }
+            return;
+        } catch (PDOException $e) {
+            $attempt++;
+            $locked = stripos($e->getMessage(), 'database is locked') !== false;
+            if (!$locked || $attempt >= $maxAttempts) {
+                $elapsedMs = (int) round((microtime(true) - $start) * 1000);
+                error_log(
+                    '[echotree] sqlite write failed operation=' . $operation
+                    . ' retries=' . $attempt
+                    . ' elapsed_ms=' . $elapsedMs
+                    . ' error=' . $e->getMessage()
+                );
+                throw $e;
+            }
+
+            $elapsedMs = (int) round((microtime(true) - $start) * 1000);
+            error_log(
+                '[echotree] sqlite lock retry operation=' . $operation
+                . ' attempt=' . $attempt
+                . ' elapsed_ms=' . $elapsedMs
+            );
+            usleep($baseDelayMs * $attempt * 1000);
+        }
     }
 }
 
