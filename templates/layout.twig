@@ -172,6 +172,34 @@
         gap: 8px;
         flex-wrap: wrap;
       }
+      .nav-toggle {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border-radius: 12px;
+      }
+      .nav-toggle__icon {
+        position: relative;
+        width: 18px;
+        height: 2px;
+        background: currentColor;
+        border-radius: 999px;
+      }
+      .nav-toggle__icon::before,
+      .nav-toggle__icon::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        width: 18px;
+        height: 2px;
+        background: currentColor;
+        border-radius: 999px;
+      }
+      .nav-toggle__icon::before { top: -6px; }
+      .nav-toggle__icon::after { top: 6px; }
       .nav a {
         text-decoration: none;
         padding: 7px 12px;
@@ -191,7 +219,7 @@
         margin-bottom: 14px;
       }
       .page-title {
-        margin-bottom: 2px;
+        margin: 10px 0;
         font-size: clamp(26px, 2.5vw, 36px);
       }
       .page-subtitle {
@@ -288,6 +316,9 @@
         display: inline;
       }
       @media (max-width: 900px) {
+        .topbar {
+          align-items: center;
+        }
         header {
           padding: 14px 16px;
         }
@@ -304,6 +335,29 @@
         .split-callout {
           grid-template-columns: 1fr;
         }
+        .nav-toggle {
+          display: inline-flex;
+        }
+        .nav {
+          display: none;
+          width: 100%;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 6px;
+          margin-top: 8px;
+          padding-top: 12px;
+          border-top: 1px solid var(--line-soft);
+        }
+        .nav.is-open {
+          display: flex;
+        }
+        .nav a {
+          width: 100%;
+          padding: 10px 12px;
+          border-radius: 12px;
+          border-color: var(--line-soft);
+          background: rgba(246, 251, 243, 0.7);
+        }
       }
     </style>
   </head>
@@ -317,7 +371,10 @@
           {% endif %}
           <span class="muted">/ {{ title }}</span>
         </div>
-        <nav class="nav">
+        <button type="button" class="nav-toggle button-secondary" aria-expanded="false" aria-controls="site-nav" aria-label="Toggle navigation">
+          <span class="nav-toggle__icon"></span>
+        </button>
+        <nav class="nav" id="site-nav">
           <a href="{{ base_path ~ '/' }}">Home</a>
           <a href="{{ base_path }}/feeds">Feeds</a>
           <a href="{{ base_path }}/articles">Articles</a>
@@ -331,5 +388,27 @@
     <main>
       {% block content %}{% endblock %}
     </main>
+    <script>
+      (function () {
+        var toggle = document.querySelector('.nav-toggle');
+        var nav = document.getElementById('site-nav');
+        if (!toggle || !nav) return;
+
+        function syncState() {
+          if (window.innerWidth > 900) {
+            nav.classList.remove('is-open');
+            toggle.setAttribute('aria-expanded', 'false');
+          }
+        }
+
+        toggle.addEventListener('click', function () {
+          var isOpen = nav.classList.toggle('is-open');
+          toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+
+        window.addEventListener('resize', syncState);
+        syncState();
+      })();
+    </script>
   </body>
 </html>
