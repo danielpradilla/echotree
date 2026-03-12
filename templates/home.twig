@@ -1,8 +1,41 @@
 {% extends "layout.twig" %}
 
 {% block content %}
-  <div class="card">
-    <p class="muted">Your calm, personal space to read, think, and echo.</p>
-    <p>This is the initial scaffold. More features will land step by step.</p>
+  <div class="hero-card card">
+    <span class="eyebrow">Personal publishing cockpit</span>
+    <div class="split-callout">
+      <div>
+        <h1 class="page-title">Read slowly. Share with intent.</h1>
+        <p class="page-subtitle muted">
+          EchoTree keeps your reading queue, commentary drafts, and publishing schedule in one focused workspace.
+        </p>
+      </div>
+      <div class="callout-panel">
+        <p><strong>Start here</strong></p>
+        <p class="muted" style="margin-bottom: 0;">Add a feed, review incoming articles, then schedule posts across your connected accounts.</p>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top: 18px;">
+    <div class="page-header" style="margin-bottom: 0;">
+      <div>
+        <span class="eyebrow">Workflow</span>
+        <h2 style="margin-bottom: 8px;">The current loop</h2>
+      </div>
+    </div>
+    <div class="split-callout">
+      <div class="callout-panel">
+        <p><strong>1. Curate feeds</strong></p>
+        <p class="muted" style="margin-bottom: 0;">Build a reading stream that stays useful instead of noisy.</p>
+      </div>
+      <div class="callout-panel">
+        <p><strong>2. Draft responses</strong></p>
+        <p class="muted" style="margin-bottom: 0;">Generate summaries or write your own commentary before posting.</p>
+      </div>
+      <div class="callout-panel">
+        <p><strong>3. Publish deliberately</strong></p>
+        <p class="muted" style="margin-bottom: 0;">Schedule posts with the right account mix and timing.</p>
+      </div>
+    </div>
   </div>
 {% endblock %}

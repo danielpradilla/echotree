@@ -1,29 +1,35 @@
 {% extends "layout.twig" %}
 
 {% block content %}
-  <div class="card">
+  <div class="page-header">
+    <div>
+      <span class="eyebrow">Feeds</span>
+      <h1 class="page-title">{{ feed.id ? 'Edit feed' : 'Add feed' }}</h1>
+      <p class="page-subtitle muted">Set the sources that power your reading queue.</p>
+    </div>
+  </div>
+  <div class="card" style="max-width: 720px;">
     {% if error %}
-      <p class="muted">{{ error }}</p>
+      <p class="status-pill">{{ error }}</p>
     {% endif %}
-    <form method="post" action="{{ base_path }}{{ action }}">
+    <form method="post" action="{{ base_path }}{{ action }}" class="form-stack">
       <input type="hidden" name="_csrf" value="{{ csrf }}" />
       <label>
         Name
         <input type="text" name="name" value="{{ feed.name }}" required />
       </label>
-      <br /><br />
       <label>
         URL
         <input type="url" name="url" value="{{ feed.url }}" required />
       </label>
-      <br /><br />
-      <label>
+      <label class="checkbox-row">
         <input type="checkbox" name="is_active" {% if feed.is_active %}checked{% endif %} />
         Active
       </label>
-      <br /><br />
-      <button type="submit">Save</button>
-      <a href="{{ base_path }}/feeds" style="margin-left: 8px;">Cancel</a>
+      <div class="actions-row">
+        <button type="submit">Save</button>
+        <a href="{{ base_path }}/feeds">Cancel</a>
+      </div>
     </form>
   </div>
 {% endblock %}

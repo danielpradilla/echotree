@@ -15,24 +15,40 @@
     .share__iframe {
       width: 100%;
       height: 60vh;
-      border: 1px solid #eadfce;
-      border-radius: 10px;
-      background: #fffaf2;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--card-solid);
+    }
+    .share__meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
     }
   </style>
 
+  <div class="page-header">
+    <div>
+      <span class="eyebrow">Instant capture</span>
+      <h1 class="page-title">Share a link</h1>
+      <p class="page-subtitle muted">Drop in any article URL, preview it, and push it through the same scheduling flow as your feed inbox.</p>
+    </div>
+  </div>
+
   <div class="card share">
-    <form method="post" action="{{ base_path }}/share">
+    <form method="post" action="{{ base_path }}/share" class="form-stack">
       <input type="hidden" name="_csrf" value="{{ csrf }}" />
       <label>
         Paste a link
         <input type="url" name="url" style="width: 100%;" placeholder="https://example.com/article" value="{{ selected ? selected.url : '' }}" required />
       </label>
-      <br /><br />
-      <button type="submit">Preview</button>
-      {% if error %}
-        <span class="muted" style="margin-left: 8px;">{{ error }}</span>
-      {% endif %}
+      <div class="actions-row">
+        <button type="submit">Preview</button>
+        {% if error %}
+          <span class="status-pill">{{ error }}</span>
+        {% endif %}
+      </div>
     </form>
 
     <div class="share__viewer">
@@ -71,24 +87,21 @@
         {% endif %}
         {% if error %}
           <div class="card" style="margin-bottom: 12px;">
-            <p class="muted">Please add a comment, schedule time, and at least one account.</p>
+            <p class="status-pill">Please add a comment, schedule time, and at least one account</p>
           </div>
         {% endif %}
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="share__meta">
           <div>
             <strong>{{ selected.title }}</strong>
           </div>
-          <div>
+          <div class="actions-row">
             {% if mode == 'reader' %}
               <span class="muted">Reader</span>
-              <span class="muted" style="margin: 0 6px;">·</span>
-                <a href="{{ base_path }}/share?selected={{ selected.id }}&mode=original">Original</a>
+              <a href="{{ base_path }}/share?selected={{ selected.id }}&mode=original">Original</a>
             {% else %}
               <a href="{{ base_path }}/share?selected={{ selected.id }}&mode=reader">Reader</a>
-              <span class="muted" style="margin: 0 6px;">·</span>
               <span class="muted">Original</span>
             {% endif %}
-            <span class="muted" style="margin: 0 6px;">·</span>
             <a href="{{ selected.url }}" target="_blank" rel="noopener">Open in new tab</a>
           </div>
         </div>
@@ -100,10 +113,13 @@
         {% endif %}
 
         <div class="card">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <strong>Schedule</strong>
+          <div class="page-header" style="margin-bottom: 14px;">
+            <div>
+              <span class="eyebrow">Compose</span>
+              <strong>Schedule</strong>
+            </div>
           </div>
-          <form method="post" action="{{ base_path }}/posts">
+          <form method="post" action="{{ base_path }}/posts" class="form-stack">
             <input type="hidden" name="_csrf" value="{{ csrf }}" />
             <input type="hidden" name="_submit_token" value="{{ submit_token }}" />
             <input type="hidden" name="article_id" value="{{ selected.id }}" />
@@ -127,32 +143,33 @@
               <button type="button" data-generate-comment data-article-id="{{ selected.id }}">Generate</button>
               <span class="muted" data-comment-status></span>
             </div>
-            <br /><br />
             <label>
               Schedule
               <input id="share-schedule" type="datetime-local" name="scheduled_at" />
             </label>
-            <br /><br />
-            <fieldset style="border: 0; padding: 0; margin: 0;">
+            <fieldset>
               <legend>Accounts</legend>
               {% if accounts|length == 0 %}
                 <p class="muted">No active accounts yet.</p>
               {% else %}
+                <div class="stack" style="gap: 10px;">
                 {% for account in accounts %}
-                  <label style="display: block;">
+                  <label class="checkbox-row">
                     <input type="checkbox" name="account_ids[]" value="{{ account.id }}" />
                     {{ account.platform }} · {{ account.display_name }} ({{ account.handle }})
                   </label>
                 {% endfor %}
+                </div>
               {% endif %}
             </fieldset>
-            <br />
-            <button type="submit" name="action" value="schedule">Schedule</button>
-            <button type="submit" name="action" value="now" style="margin-left: 6px;">Share now</button>
+            <div class="actions-row">
+              <button type="submit" name="action" value="schedule">Schedule</button>
+              <button type="submit" name="action" value="now" class="button-secondary">Share now</button>
+            </div>
           </form>
         </div>
       {% else %}
-        <div class="muted" style="padding: 24px; border: 1px dashed #eadfce; border-radius: 10px;">
+        <div class="empty-state muted">
           Paste a link above to preview and schedule.
         </div>
       {% endif %}

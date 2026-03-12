@@ -1,56 +1,64 @@
 {% extends "layout.twig" %}
 
 {% block content %}
-  <div class="card">
-    <div style="display: flex; justify-content: flex-end; align-items: center;">
+  <div class="page-header">
+    <div>
+      <span class="eyebrow">Sources</span>
+      <h1 class="page-title">Feeds</h1>
+      <p class="page-subtitle muted">Track the publications and blogs that feed your reading workflow.</p>
+    </div>
+    <div class="actions-row">
       <a href="{{ base_path }}/feeds/new">Add feed</a>
     </div>
-
+  </div>
+  <div class="card">
     {% if feeds|length == 0 %}
-      <p class="muted">No feeds yet.</p>
+      <div class="empty-state muted">No feeds yet.</div>
     {% else %}
-      <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
-        <thead>
-          <tr>
-            <th style="text-align: left; padding: 8px 4px;">Name</th>
-            <th style="text-align: left; padding: 8px 4px;">URL</th>
-            <th style="text-align: left; padding: 8px 4px;">Active</th>
-            <th style="text-align: left; padding: 8px 4px;">Last fetched</th>
-            <th style="text-align: left; padding: 8px 4px;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for feed in feeds %}
+      <div class="table-shell">
+        <table>
+          <thead>
             <tr>
-              <td style="padding: 8px 4px;">{{ feed.name }}</td>
-              <td style="padding: 8px 4px;">
-                <a href="{{ feed.url }}" target="_blank" rel="noopener">{{ feed.url }}</a>
-              </td>
-              <td style="padding: 8px 4px;">
-                {{ feed.is_active ? 'Yes' : 'No' }}
-              </td>
-              <td style="padding: 8px 4px;">
-                {{ feed.last_fetched_at ?: '—' }}
-              </td>
-              <td style="padding: 8px 4px;">
-                <a href="{{ base_path }}/feeds/{{ feed.id }}/edit">Edit</a>
-                <form method="post" action="{{ base_path }}/feeds/{{ feed.id }}/toggle" style="display: inline; margin-left: 6px;">
-                  <input type="hidden" name="_csrf" value="{{ csrf }}" />
-                  <button type="submit">{{ feed.is_active ? 'Disable' : 'Enable' }}</button>
-                </form>
-                <form method="post" action="{{ base_path }}/feeds/{{ feed.id }}/fetch" style="display: inline; margin-left: 6px;">
-                  <input type="hidden" name="_csrf" value="{{ csrf }}" />
-                  <button type="submit">Fetch now</button>
-                </form>
-                <form method="post" action="{{ base_path }}/feeds/{{ feed.id }}/delete" style="display: inline; margin-left: 6px;">
-                  <input type="hidden" name="_csrf" value="{{ csrf }}" />
-                  <button type="submit">Delete</button>
-                </form>
-              </td>
+              <th>Name</th>
+              <th>URL</th>
+              <th>Active</th>
+              <th>Last fetched</th>
+              <th>Actions</th>
             </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {% for feed in feeds %}
+              <tr>
+                <td><strong>{{ feed.name }}</strong></td>
+                <td>
+                  <a href="{{ feed.url }}" target="_blank" rel="noopener">{{ feed.url }}</a>
+                </td>
+                <td>
+                  <span class="status-pill">{{ feed.is_active ? 'Active' : 'Paused' }}</span>
+                </td>
+                <td>{{ feed.last_fetched_at ?: '—' }}</td>
+                <td>
+                  <div class="actions-row">
+                    <a href="{{ base_path }}/feeds/{{ feed.id }}/edit">Edit</a>
+                    <form method="post" action="{{ base_path }}/feeds/{{ feed.id }}/toggle" class="inline-form">
+                      <input type="hidden" name="_csrf" value="{{ csrf }}" />
+                      <button type="submit" class="button-secondary">{{ feed.is_active ? 'Disable' : 'Enable' }}</button>
+                    </form>
+                    <form method="post" action="{{ base_path }}/feeds/{{ feed.id }}/fetch" class="inline-form">
+                      <input type="hidden" name="_csrf" value="{{ csrf }}" />
+                      <button type="submit" class="button-secondary">Fetch now</button>
+                    </form>
+                    <form method="post" action="{{ base_path }}/feeds/{{ feed.id }}/delete" class="inline-form">
+                      <input type="hidden" name="_csrf" value="{{ csrf }}" />
+                      <button type="submit" class="button-secondary">Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     {% endif %}
   </div>
 {% endblock %}

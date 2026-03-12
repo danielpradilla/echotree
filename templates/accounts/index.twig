@@ -1,58 +1,72 @@
 {% extends "layout.twig" %}
 
 {% block content %}
-  <div class="card">
-    <div style="display: flex; justify-content: flex-end; align-items: center;">
+  <div class="page-header">
+    <div>
+      <span class="eyebrow">Publishing</span>
+      <h1 class="page-title">Accounts</h1>
+      <p class="page-subtitle muted">Control which identities are available when you schedule or publish a post.</p>
+    </div>
+    <div class="actions-row">
       <a href="{{ base_path }}/accounts/new">Add account</a>
     </div>
-
+  </div>
+  <div class="card">
     {% if accounts|length == 0 %}
-      <p class="muted">No accounts yet.</p>
+      <div class="empty-state muted">No accounts yet.</div>
     {% else %}
-      <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
-        <thead>
-          <tr>
-            <th style="text-align: left; padding: 8px 4px;">Platform</th>
-            <th style="text-align: left; padding: 8px 4px;">Name</th>
-            <th style="text-align: left; padding: 8px 4px;">Handle</th>
-            <th style="text-align: left; padding: 8px 4px;">Active</th>
-            <th style="text-align: left; padding: 8px 4px;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for account in accounts %}
+      <div class="table-shell">
+        <table>
+          <thead>
             <tr>
-              <td style="padding: 8px 4px;">{{ account.platform }}</td>
-              <td style="padding: 8px 4px;">{{ account.display_name }}</td>
-              <td style="padding: 8px 4px;">{{ account.handle }}</td>
-              <td style="padding: 8px 4px;">{{ account.is_active ? 'Yes' : 'No' }}</td>
-              <td style="padding: 8px 4px;">
-                <a href="{{ base_path }}/accounts/{{ account.id }}/edit">Edit</a>
-                <form method="post" action="{{ base_path }}/accounts/{{ account.id }}/toggle" style="display: inline; margin-left: 6px;">
-                  <input type="hidden" name="_csrf" value="{{ csrf }}" />
-                  <button type="submit">{{ account.is_active ? 'Disable' : 'Enable' }}</button>
-                </form>
-                <form method="post" action="{{ base_path }}/accounts/{{ account.id }}/delete" style="display: inline; margin-left: 6px;">
-                  <input type="hidden" name="_csrf" value="{{ csrf }}" />
-                  <button type="submit">Delete</button>
-                </form>
-              </td>
+              <th>Platform</th>
+              <th>Name</th>
+              <th>Handle</th>
+              <th>Active</th>
+              <th>Actions</th>
             </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {% for account in accounts %}
+              <tr>
+                <td><strong>{{ account.platform }}</strong></td>
+                <td>{{ account.display_name }}</td>
+                <td>{{ account.handle }}</td>
+                <td><span class="status-pill">{{ account.is_active ? 'Active' : 'Paused' }}</span></td>
+                <td>
+                  <div class="actions-row">
+                    <a href="{{ base_path }}/accounts/{{ account.id }}/edit">Edit</a>
+                    <form method="post" action="{{ base_path }}/accounts/{{ account.id }}/toggle" class="inline-form">
+                      <input type="hidden" name="_csrf" value="{{ csrf }}" />
+                      <button type="submit" class="button-secondary">{{ account.is_active ? 'Disable' : 'Enable' }}</button>
+                    </form>
+                    <form method="post" action="{{ base_path }}/accounts/{{ account.id }}/delete" class="inline-form">
+                      <input type="hidden" name="_csrf" value="{{ csrf }}" />
+                      <button type="submit" class="button-secondary">Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     {% endif %}
 
-    <hr style="margin: 16px 0; border: 0; border-top: 1px solid #eadfce;" />
-    <div>
-      <p class="muted">Connect an account:</p>
-      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+    <hr style="margin: 16px 0;" />
+    <div class="stack">
+      <div>
+        <span class="eyebrow">OAuth</span>
+        <h2 style="margin-bottom: 8px;">Connect an account</h2>
+        <p class="muted">Use the built-in flows to add supported networks without manually pasting tokens.</p>
+      </div>
+      <div class="actions-row">
         <a href="{{ base_path }}/oauth/mastodon/start">Connect Mastodon</a>
         <a href="{{ base_path }}/oauth/x/start">Connect X</a>
         <a href="{{ base_path }}/oauth/linkedin/start">Connect LinkedIn</a>
         <a href="{{ base_path }}/oauth/bluesky">Connect Bluesky</a>
       </div>
-      <p class="muted" style="margin-top: 8px;">
+      <p class="muted" style="margin-bottom: 0;">
         Callback URL: {{ oauth_callback }}
       </p>
     </div>

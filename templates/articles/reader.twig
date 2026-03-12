@@ -5,6 +5,7 @@
     .reader {
       display: flex;
       gap: 24px;
+      align-items: start;
     }
     .reader__content {
       flex: 2;
@@ -17,8 +18,21 @@
     .reader__meta {
       margin-bottom: 16px;
     }
+    .reader__article {
+      padding: 32px;
+    }
     .reader__content article {
-      line-height: 1.6;
+      line-height: 1.8;
+      font-size: 18px;
+    }
+    .reader__content article h1,
+    .reader__content article h2,
+    .reader__content article h3 {
+      margin-top: 1.4em;
+      margin-bottom: 0.5em;
+    }
+    .reader__content article p:last-child {
+      margin-bottom: 0;
     }
     @media (max-width: 900px) {
       .reader {
@@ -29,23 +43,30 @@
 
   <div class="reader">
     <div class="reader__content">
-      <div class="reader__meta">
-        <p class="muted">{{ article.feed_name }} • {{ article.published_at ?: article.created_at }}</p>
-        <p><a href="{{ article.url }}" target="_blank" rel="noopener">Open original</a></p>
+      <div class="card hero-card reader__meta">
+        <span class="eyebrow">{{ article.feed_name }}</span>
+        <h1 style="margin-bottom: 10px;">{{ article.title }}</h1>
+        <div class="actions-row">
+          <span class="muted">{{ article.published_at ?: article.created_at }}</span>
+          <a href="{{ article.url }}" target="_blank" rel="noopener">Open original</a>
+        </div>
       </div>
-      <article>
-        {{ article.content_html|raw }}
-      </article>
+      <div class="card reader__article">
+        <article>
+          {{ article.content_html|raw }}
+        </article>
+      </div>
     </div>
     <aside class="reader__sidebar">
       <div class="card">
-        <h2>Compose</h2>
+        <span class="eyebrow">Compose</span>
+        <h2>Schedule a response</h2>
         {% if saved %}
-          <p class="muted">Post scheduled.</p>
+          <p class="status-pill">Post scheduled</p>
         {% elseif error %}
-          <p class="muted">Comment, schedule time, and at least one account are required.</p>
+          <p class="status-pill">Comment, schedule time, and at least one account are required</p>
         {% endif %}
-        <form method="post" action="{{ base_path }}/posts">
+        <form method="post" action="{{ base_path }}/posts" class="form-stack">
           <input type="hidden" name="_csrf" value="{{ csrf }}" />
           <input type="hidden" name="_submit_token" value="{{ submit_token }}" />
           <input type="hidden" name="article_id" value="{{ article.id }}" />
@@ -54,28 +75,29 @@
             Comment
             <textarea name="comment" rows="6" style="width: 100%;"></textarea>
           </label>
-          <br /><br />
           <label>
             Schedule
             <input id="reader-schedule" type="datetime-local" name="scheduled_at" />
           </label>
-          <br /><br />
-          <fieldset style="border: 0; padding: 0; margin: 0;">
+          <fieldset>
             <legend>Accounts</legend>
             {% if accounts|length == 0 %}
               <p class="muted">No active accounts yet.</p>
             {% else %}
+              <div class="stack" style="gap: 10px;">
               {% for account in accounts %}
-                <label style="display: block;">
+                <label class="checkbox-row">
                   <input type="checkbox" name="account_ids[]" value="{{ account.id }}" />
                   {{ account.platform }} · {{ account.display_name }} ({{ account.handle }})
                 </label>
               {% endfor %}
+              </div>
             {% endif %}
           </fieldset>
-          <br />
-          <button type="submit" name="action" value="schedule">Schedule</button>
-          <button type="submit" name="action" value="now" style="margin-left: 6px;">Share now</button>
+          <div class="actions-row">
+            <button type="submit" name="action" value="schedule">Schedule</button>
+            <button type="submit" name="action" value="now" class="button-secondary">Share now</button>
+          </div>
         </form>
       </div>
     </aside>

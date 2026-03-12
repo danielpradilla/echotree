@@ -8,17 +8,20 @@
       gap: 20px;
     }
     .inbox__list {
-      border-right: 1px solid #eadfce;
+      border-right: 1px solid var(--line-soft);
       padding-right: 12px;
       max-height: calc(100vh - 220px);
       overflow: auto;
     }
     .inbox__item {
       padding: 10px 8px;
-      border-bottom: 1px solid #efe4d6;
+      border-bottom: 1px solid var(--line-soft);
     }
     .inbox__item a { text-decoration: none; }
-    .inbox__item.active { background: #fff7e8; border-radius: 8px; }
+    .inbox__item.active {
+      background: var(--selection);
+      border-radius: 12px;
+    }
     .inbox__viewer {
       display: flex;
       flex-direction: column;
@@ -28,9 +31,24 @@
     .inbox__iframe {
       width: 100%;
       height: 60vh;
-      border: 1px solid #eadfce;
-      border-radius: 10px;
-      background: #fffaf2;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--card-solid);
+    }
+    .inbox__toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 12px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .inbox__meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
     }
     @media (max-width: 900px) {
       .inbox { grid-template-columns: 1fr; }
@@ -41,13 +59,21 @@
     }
   </style>
 
+  <div class="page-header">
+    <div>
+      <span class="eyebrow">Reading desk</span>
+      <h1 class="page-title">Articles</h1>
+      <p class="page-subtitle muted">Review new pieces, switch between clean reader mode and the original page, then turn insight into a scheduled post.</p>
+    </div>
+  </div>
+
   <div class="card">
-    <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+    <div class="actions-row" style="justify-content: flex-end; margin-bottom: 10px;">
       <button type="button" class="inbox__toggle" style="display: none;">Show list</button>
     </div>
     <div class="inbox" style="margin-top: 12px;">
       <div class="inbox__list">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div class="inbox__toolbar">
           <form method="get" action="{{ base_path }}/articles">
             <label>
               Feed
@@ -62,16 +88,16 @@
             </label>
           </form>
           <form method="post" action="{{ base_path }}/articles/archive-all">
-            <input type="hidden" name="_csrf" value="{{ csrf }}" />
-            {% if active_feed_id %}
-              <input type="hidden" name="feed_id" value="{{ active_feed_id }}" />
-            {% endif %}
-            <button type="submit">Archive all</button>
+              <input type="hidden" name="_csrf" value="{{ csrf }}" />
+              {% if active_feed_id %}
+                <input type="hidden" name="feed_id" value="{{ active_feed_id }}" />
+              {% endif %}
+              <button type="submit" class="button-secondary">Archive all</button>
           </form>
         </div>
 
         {% if articles|length == 0 %}
-          <p class="muted">No articles yet.</p>
+          <div class="empty-state muted">No articles yet.</div>
         {% else %}
           {% for article in articles %}
             {% set is_selected = selected and selected.id == article.id %}
@@ -85,11 +111,11 @@
                 {{ article.feed_name }} · {{ article.published_at ?: article.created_at }} ·
                 {% if article.is_read %}read{% else %}unread{% endif %}
               </div>
-              <div style="margin-top: 6px;">
+              <div class="actions-row" style="margin-top: 6px;">
                 <a href="{{ article.url }}" target="_blank" rel="noopener">Original</a>
-                <form method="post" action="{{ base_path }}/articles/{{ article.id }}/archive" style="display: inline; margin-left: 8px;">
+                <form method="post" action="{{ base_path }}/articles/{{ article.id }}/archive" class="inline-form">
                   <input type="hidden" name="_csrf" value="{{ csrf }}" />
-                  <button type="submit">Archive</button>
+                  <button type="submit" class="button-secondary">Archive</button>
                 </form>
               </div>
             </div>
@@ -133,24 +159,21 @@
           {% endif %}
           {% if error %}
             <div class="card" style="margin-bottom: 12px;">
-              <p class="muted">Please add a comment, schedule time, and at least one account.</p>
+              <p class="status-pill">Please add a comment, schedule time, and at least one account</p>
             </div>
           {% endif %}
-          <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div class="inbox__meta">
             <div>
               <strong>{{ selected.title }}</strong>
             </div>
-            <div>
+            <div class="actions-row">
               {% if mode == 'reader' %}
                 <span class="muted">Reader</span>
-                <span class="muted" style="margin: 0 6px;">·</span>
                 <a href="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode=original">Original</a>
               {% else %}
                 <a href="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode=reader">Reader</a>
-                <span class="muted" style="margin: 0 6px;">·</span>
                 <span class="muted">Original</span>
               {% endif %}
-              <span class="muted" style="margin: 0 6px;">·</span>
               <a href="{{ selected.url }}" target="_blank" rel="noopener">Open in new tab</a>
             </div>
           </div>
@@ -162,11 +185,14 @@
           {% endif %}
 
           <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <strong>Schedule</strong>
+            <div class="page-header" style="margin-bottom: 14px;">
+              <div>
+                <span class="eyebrow">Compose</span>
+                <strong>Schedule</strong>
+              </div>
               <span class="muted" style="font-size: 12px;">{{ selected.feed_name }}</span>
             </div>
-            <form method="post" action="{{ base_path }}/posts">
+            <form method="post" action="{{ base_path }}/posts" class="form-stack">
               <input type="hidden" name="_csrf" value="{{ csrf }}" />
               <input type="hidden" name="_submit_token" value="{{ submit_token }}" />
               <input type="hidden" name="article_id" value="{{ selected.id }}" />
@@ -190,32 +216,33 @@
                 <button type="button" data-generate-comment data-article-id="{{ selected.id }}">Generate</button>
                 <span class="muted" data-comment-status></span>
               </div>
-              <br /><br />
               <label>
                 Schedule
                 <input id="article-schedule" type="datetime-local" name="scheduled_at" />
               </label>
-              <br /><br />
-              <fieldset style="border: 0; padding: 0; margin: 0;">
+              <fieldset>
                 <legend>Accounts</legend>
                 {% if accounts|length == 0 %}
                   <p class="muted">No active accounts yet.</p>
                 {% else %}
+                  <div class="stack" style="gap: 10px;">
                   {% for account in accounts %}
-                    <label style="display: block;">
+                    <label class="checkbox-row">
                       <input type="checkbox" name="account_ids[]" value="{{ account.id }}" />
                       {{ account.platform }} · {{ account.display_name }} ({{ account.handle }})
                     </label>
                   {% endfor %}
+                  </div>
                 {% endif %}
               </fieldset>
-              <br />
-              <button type="submit" name="action" value="schedule">Schedule</button>
-              <button type="submit" name="action" value="now" style="margin-left: 6px;">Share now</button>
+              <div class="actions-row">
+                <button type="submit" name="action" value="schedule">Schedule</button>
+                <button type="submit" name="action" value="now" class="button-secondary">Share now</button>
+              </div>
             </form>
           </div>
         {% else %}
-          <div class="muted" style="padding: 24px; border: 1px dashed #eadfce; border-radius: 10px;">
+          <div class="empty-state muted">
             Select an article to preview and schedule.
           </div>
         {% endif %}
