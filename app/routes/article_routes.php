@@ -65,6 +65,45 @@ function echotree_schedule_utc_to_display(string $utcValue): string
     return $dt->format('Y-m-d H:i');
 }
 
+function find_recent_duplicate_post(PDO $pdo, int $articleId, string $comment, array $accountIds, int $windowMinutes = 15): ?int
+{
+    if ($articleId <= 0 || $comment === '' || count($accountIds) === 0) {
+        return null;
+    }
+
+    sort($accountIds);
+    $normalizedComment = preg_replace('/\s+/u', ' ', trim($comment)) ?? trim($comment);
+    $stmt = $pdo->prepare(
+        "SELECT id, comment FROM posts "
+        . "WHERE article_id = :article_id "
+        . "AND status IN ('scheduled', 'sent', 'failed') "
+        . "AND created_at >= datetime('now', :window) "
+        . 'ORDER BY id DESC'
+    );
+    $stmt->execute([
+        ':article_id' => $articleId,
+        ':window' => '-' . $windowMinutes . ' minutes',
+    ]);
+
+    foreach ($stmt->fetchAll() as $post) {
+        $existingComment = preg_replace('/\s+/u', ' ', trim((string) $post['comment'])) ?? trim((string) $post['comment']);
+        if ($existingComment !== $normalizedComment) {
+            continue;
+        }
+
+        $deliveryStmt = $pdo->prepare('SELECT account_id FROM deliveries WHERE post_id = :post_id ORDER BY account_id ASC');
+        $deliveryStmt->execute([':post_id' => (int) $post['id']]);
+        $existingAccountIds = array_map('intval', array_column($deliveryStmt->fetchAll(), 'account_id'));
+        sort($existingAccountIds);
+
+        if ($existingAccountIds === $accountIds) {
+            return (int) $post['id'];
+        }
+    }
+
+    return null;
+}
+
 function register_article_routes(App $app): void
 {
     $app->get('/articles', function ($request, $response) {
@@ -453,6 +492,7 @@ function register_article_routes(App $app): void
             'article' => $article,
             'accounts' => $accounts,
             'saved' => $request->getQueryParams()['saved'] ?? null,
+            'status' => $request->getQueryParams()['status'] ?? null,
             'error' => $request->getQueryParams()['error'] ?? null,
             'csrf' => csrf_token(),
             'submit_token' => create_post_submit_token(),
@@ -574,6 +614,14 @@ function register_article_routes(App $app): void
             $scheduledAt = $parsedScheduleAt;
         }
 
+        $pdo = db_connection();
+        $duplicatePostId = find_recent_duplicate_post($pdo, $articleId, $comment, $accountIds);
+        if ($duplicatePostId !== null) {
+            return $response
+                ->withHeader('Location', $target . $sep . 'status=duplicate_ignored')
+                ->withStatus(302);
+        }
+
         try {
             $postId = create_scheduled_post($articleId, $comment, $scheduledAt, $accountIds);
 
@@ -582,8 +630,6 @@ function register_article_routes(App $app): void
             }
 
             $status = 'scheduled';
-            $pdo = db_connection();
-
             if ($action === 'now') {
                 $statusRows = $pdo->prepare(
                     'SELECT status, COUNT(*) AS count FROM deliveries WHERE post_id = :id GROUP BY status'

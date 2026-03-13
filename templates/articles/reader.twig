@@ -63,6 +63,8 @@
         <h2>Schedule a response</h2>
         {% if saved %}
           <p class="status-pill">Post scheduled</p>
+        {% elseif status == 'duplicate_ignored' %}
+          <p class="status-pill">Duplicate submit ignored</p>
         {% elseif error %}
           <p class="status-pill">Comment, schedule time, and at least one account are required</p>
         {% endif %}
