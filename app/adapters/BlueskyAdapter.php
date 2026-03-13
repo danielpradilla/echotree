@@ -91,20 +91,11 @@ class BlueskyAdapter implements AdapterInterface
     private function buildText(string $text, string $url): string
     {
         $text = preg_replace('/\s+/u', ' ', trim($text)) ?? trim($text);
-        if ($url !== '') {
-            $suffix = "\n" . $url;
-            $budget = self::MAX_POST_LENGTH - mb_strlen($suffix);
-            if ($budget < 0) {
-                $budget = 0;
-            }
-            $trimmed = $this->truncateText($text, $budget);
-            if ($trimmed === '') {
-                return $url;
-            }
-            return $trimmed . $suffix;
+        if ($text !== '') {
+            return $this->truncateText($text, self::MAX_POST_LENGTH);
         }
 
-        return $this->truncateText($text, self::MAX_POST_LENGTH);
+        return $url !== '' ? $this->truncateText($url, self::MAX_POST_LENGTH) : '';
     }
 
     private function truncateText(string $text, int $maxChars): string

@@ -271,7 +271,7 @@ function register_article_routes(App $app): void
             $deliveries = list_post_deliveries($pdo, (int) $post['id']);
             $selected = [];
             foreach ($deliveries as $delivery) {
-                if (in_array((string) $delivery['status'], ['pending', 'failed'], true)) {
+                if (in_array((string) $delivery['status'], ['pending', 'failed', 'publishing'], true)) {
                     $selected[] = (int) $delivery['account_id'];
                 }
             }
@@ -589,12 +589,14 @@ function register_article_routes(App $app): void
                     'SELECT status, COUNT(*) AS count FROM deliveries WHERE post_id = :id GROUP BY status'
                 );
                 $statusRows->execute([':id' => $postId]);
-                $counts = ['pending' => 0, 'failed' => 0, 'sent' => 0];
+                $counts = ['pending' => 0, 'publishing' => 0, 'failed' => 0, 'sent' => 0];
                 foreach ($statusRows->fetchAll() as $row) {
                     $counts[$row['status']] = (int) $row['count'];
                 }
 
-                if ($counts['sent'] > 0) {
+                if ($counts['publishing'] > 0) {
+                    $status = 'scheduled';
+                } elseif ($counts['sent'] > 0) {
                     $status = 'shared';
                 } elseif ($counts['pending'] > 0) {
                     $rateLimitMinutes = posting_rate_limit_minutes();

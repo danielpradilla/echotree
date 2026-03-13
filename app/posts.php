@@ -221,7 +221,21 @@ function process_post_deliveries(
             continue;
         }
 
+        $claim = $pdo->prepare(
+            "UPDATE deliveries SET status = 'publishing', error = NULL "
+            . "WHERE id = :id AND status IN ('pending', 'failed')"
+        );
+
         try {
+            run_sqlite_write_with_retry(static function () use ($claim, $deliveryId): void {
+                $claim->execute([':id' => $deliveryId]);
+            }, 'delivery_claim post=' . $postId . ' delivery=' . $deliveryId . ' platform=' . $platform);
+
+            if ($claim->rowCount() === 0) {
+                publish_log($log, "Skipped: post {$postId} to {$platform} already claimed\n");
+                continue;
+            }
+
             $token = decrypt_token((string) $delivery['oauth_token_encrypted']);
             $externalId = publish_via_adapter_for_post($platform, $comment, $articleUrl, [
                 'id' => $accountId,
@@ -244,6 +258,12 @@ function process_post_deliveries(
 
             publish_log($log, "Sent: post {$postId} to {$platform}\n");
         } catch (Throwable $e) {
+            $isDeliveryAlreadyPublished = isset($externalId) && $externalId !== '';
+            if ($isDeliveryAlreadyPublished) {
+                publish_log($log, "Publish uncertain: post {$postId} to {$platform} ({$e->getMessage()})\n");
+                throw $e;
+            }
+
             $update = $pdo->prepare(
                 "UPDATE deliveries SET status = 'failed', error = :error WHERE id = :id"
             );
@@ -260,12 +280,12 @@ function process_post_deliveries(
 
     $statusRows = $pdo->prepare('SELECT status, COUNT(*) AS count FROM deliveries WHERE post_id = :id GROUP BY status');
     $statusRows->execute([':id' => $postId]);
-    $counts = ['pending' => 0, 'failed' => 0, 'sent' => 0];
+    $counts = ['pending' => 0, 'publishing' => 0, 'failed' => 0, 'sent' => 0];
     foreach ($statusRows->fetchAll() as $row) {
         $counts[$row['status']] = (int) $row['count'];
     }
 
-    if ($counts['pending'] > 0) {
+    if ($counts['pending'] > 0 || $counts['publishing'] > 0) {
         return;
     }
 
