@@ -15,12 +15,18 @@ require __DIR__ . '/../app/feed_fetcher.php';
 $pdo = db_connection();
 
 $refresh = in_array('--refresh', $argv, true);
+$skipExtraction = in_array('--skip-extraction', $argv, true);
 
 $feedId = null;
+$maxFeeds = null;
 foreach ($argv as $arg) {
     if (str_starts_with($arg, '--feed-id=')) {
         $feedId = (int) substr($arg, strlen('--feed-id='));
-        break;
+        continue;
+    }
+
+    if (str_starts_with($arg, '--max-feeds=')) {
+        $maxFeeds = (int) substr($arg, strlen('--max-feeds='));
     }
 }
 
@@ -36,6 +42,8 @@ try {
         [
             'refresh' => $refresh,
             'feed_id' => $feedId,
+            'max_feeds' => $maxFeeds,
+            'extract_full_content' => !$skipExtraction,
         ],
         function (string $line): void {
             fwrite(STDOUT, $line);

@@ -8,9 +8,14 @@ function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): void
 {
     $refresh = (bool) ($options['refresh'] ?? false);
     $feedId = isset($options['feed_id']) ? (int) $options['feed_id'] : null;
+    $maxFeeds = isset($options['max_feeds']) ? (int) $options['max_feeds'] : null;
+    $extractFullContent = (bool) ($options['extract_full_content'] ?? true);
     $maxPerFeed = (int) ($options['max_per_feed'] ?? (getenv('ECHOTREE_FEED_MAX_ITEMS') ?: 30));
     if ($maxPerFeed < 1) {
         $maxPerFeed = 30;
+    }
+    if ($maxFeeds !== null && $maxFeeds < 1) {
+        $maxFeeds = null;
     }
 
     $pdo->exec('PRAGMA foreign_keys = ON');
@@ -20,7 +25,12 @@ function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): void
         $stmt->execute([':id' => $feedId]);
         $feeds = $stmt->fetchAll();
     } else {
-        $feeds = $pdo->query('SELECT id, name, url FROM feeds WHERE is_active = 1 ORDER BY id ASC')->fetchAll();
+        $query = 'SELECT id, name, url FROM feeds WHERE is_active = 1 '
+            . 'ORDER BY CASE WHEN last_fetched_at IS NULL THEN 0 ELSE 1 END, last_fetched_at ASC, id ASC';
+        if ($maxFeeds !== null) {
+            $query .= ' LIMIT ' . (int) $maxFeeds;
+        }
+        $feeds = $pdo->query($query)->fetchAll();
     }
 
     if (!$feeds) {
@@ -94,10 +104,14 @@ function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): void
                 $contentHtml = trim((string) $item->get_description());
             }
 
-            $extracted = extract_and_merge_article_content($url, $title, $contentHtml, 15);
-            $title = trim((string) ($extracted['title'] ?? $title));
-            $contentHtml = (string) ($extracted['content_html'] ?? $contentHtml);
-            $contentText = (string) ($extracted['content_text'] ?? trim(strip_tags($contentHtml)));
+            if ($extractFullContent) {
+                $extracted = extract_and_merge_article_content($url, $title, $contentHtml, 15);
+                $title = trim((string) ($extracted['title'] ?? $title));
+                $contentHtml = (string) ($extracted['content_html'] ?? $contentHtml);
+                $contentText = (string) ($extracted['content_text'] ?? trim(strip_tags($contentHtml)));
+            } else {
+                $contentText = trim(strip_tags($contentHtml));
+            }
 
             if ($existingId) {
                 $update = $pdo->prepare(

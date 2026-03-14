@@ -18,10 +18,16 @@ function launch_feed_fetcher_in_background(): bool
         $phpBin = '/usr/bin/php';
     }
 
+    $maxFeeds = (int) (getenv('ECHOTREE_MANUAL_FETCH_ALL_MAX_FEEDS') ?: 12);
+    if ($maxFeeds < 1) {
+        $maxFeeds = 12;
+    }
+
     $command = sprintf(
-        'cd %s && nohup %s scripts/fetch_feeds.php >> %s 2>&1 &',
+        'cd %s && nohup %s scripts/fetch_feeds.php --max-feeds=%d --skip-extraction >> %s 2>&1 &',
         escapeshellarg($baseDir),
         escapeshellarg($phpBin),
+        $maxFeeds,
         escapeshellarg($logsDir . '/fetch_feeds.log')
     );
 
