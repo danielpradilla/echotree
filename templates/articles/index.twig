@@ -557,6 +557,17 @@
       <div class="reader-topbar__controls">
         <button type="button" class="inbox__toggle button-secondary" data-toggle-target="nav" style="display: none;">Show sites</button>
         <button type="button" class="inbox__toggle button-secondary" data-toggle-target="stories" style="display: none;">Show stories</button>
+        <div class="reader-header-controls">
+          <button type="button" class="reader-view-preset is-active" data-view-preset="full" title="Show sites, stories, reader, and publish" aria-label="Show full layout">
+            <span class="reader-view-preset__icon" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+          </button>
+          <button type="button" class="reader-view-preset" data-view-preset="stories" title="Hide sites" aria-label="Hide sites">
+            <span class="reader-view-preset__icon" aria-hidden="true"><span></span><span></span><span></span></span>
+          </button>
+          <button type="button" class="reader-view-preset" data-view-preset="reader" title="Hide sites and stories" aria-label="Hide sites and stories">
+            <span class="reader-view-preset__icon" aria-hidden="true"><span></span><span></span></span>
+          </button>
+        </div>
         {% set density_base = base_path ~ '/articles?' %}
         {% if active_feed_id %}
           {% set density_base = density_base ~ 'feed_id=' ~ active_feed_id ~ '&' %}
@@ -766,17 +777,6 @@
                         <span>{{ selected.feed_host }}</span>
                       {% endif %}
                     </div>
-                  </div>
-                  <div class="reader-header-controls">
-                    <button type="button" class="reader-view-preset is-active" data-view-preset="full" title="Show sites, stories, reader, and publish" aria-label="Show full layout">
-                      <span class="reader-view-preset__icon" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
-                    </button>
-                    <button type="button" class="reader-view-preset" data-view-preset="stories" title="Hide sites" aria-label="Hide sites">
-                      <span class="reader-view-preset__icon" aria-hidden="true"><span></span><span></span><span></span></span>
-                    </button>
-                    <button type="button" class="reader-view-preset" data-view-preset="reader" title="Hide sites and stories" aria-label="Hide sites and stories">
-                      <span class="reader-view-preset__icon" aria-hidden="true"><span></span><span></span></span>
-                    </button>
                   </div>
                 </div>
                 <div class="inbox__meta">
