@@ -625,16 +625,12 @@
       <div class="reader-panel reader-panel--stories">
         <div class="story-toolbar">
           <div>
-            <div class="panel-head" style="margin-bottom: 4px;">
-              {% if active_feed_id and selected %}
-                <div class="panel-kicker">{{ selected.feed_name }}</div>
-              {% elseif active_feed_id %}
-                <div class="panel-kicker">Selected site</div>
-              {% else %}
-                <div class="panel-kicker">All stories</div>
-              {% endif %}
-            </div>
-            {% if not active_feed_id %}
+            {% if active_feed_id and selected %}
+              <div class="panel-kicker">{{ selected.feed_name }}</div>
+            {% elseif active_feed_id %}
+              <div class="panel-kicker">Selected site</div>
+            {% else %}
+              <div class="panel-kicker">All stories</div>
               <strong>All stories</strong>
             {% endif %}
           </div>
