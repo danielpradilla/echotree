@@ -146,6 +146,17 @@ function register_feed_routes(App $app): void
             ->withStatus(302);
     });
 
+    $app->post('/feeds/fetch-all', function ($request, $response) {
+        $pdo = db_connection();
+        fetch_feeds($pdo, [
+            'refresh' => true,
+        ]);
+
+        return $response
+            ->withHeader('Location', url_for($request, '/feeds'))
+            ->withStatus(302);
+    });
+
     $app->map(['GET', 'POST'], '/feeds/new', function ($request, $response) {
         $view = Twig::fromRequest($request);
 

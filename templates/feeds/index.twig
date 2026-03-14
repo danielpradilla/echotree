@@ -66,6 +66,10 @@
       <p class="page-subtitle muted">Track the publications and blogs behind your queue.</p>
     </div>
     <div class="actions-row">
+      <form method="post" action="{{ base_path }}/feeds/fetch-all" class="inline-form">
+        <input type="hidden" name="_csrf" value="{{ csrf }}" />
+        <button type="submit" class="button-secondary">Fetch all</button>
+      </form>
       <a href="{{ base_path }}/feeds/new">Add feed</a>
     </div>
   </div>
