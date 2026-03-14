@@ -691,7 +691,7 @@
         {% endif %}
       </div>
 
-      <div class="reader-panel reader-panel--main" id="reader-main">
+      <div class="reader-panel reader-panel--main" id="reader-main" data-base-path="{{ base_path }}">
       <div class="reader-viewer">
         {% if selected %}
           <div class="reader-stage">
@@ -699,15 +699,19 @@
               <div class="reader-meta-card">
                 <div class="column-heading">
                   <div>
-                    <h2 class="column-heading__title">{{ selected.title }}</h2>
+                    <h2 class="column-heading__title" data-reader-title>{{ selected.title }}</h2>
                     <div class="article-source">
                       {% if selected.favicon_url %}
-                        <img class="site-favicon" src="{{ selected.favicon_url }}" alt="" loading="lazy" />
+                        <img class="site-favicon" data-reader-favicon src="{{ selected.favicon_url }}" alt="" loading="lazy" />
+                      {% else %}
+                        <img class="site-favicon" data-reader-favicon src="" alt="" loading="lazy" style="display:none;" />
                       {% endif %}
-                      <span class="source-dot" style="background: {{ selected.accent_color }};"></span>
-                      <span>{{ selected.feed_name }}</span>
+                      <span class="source-dot" data-reader-accent style="background: {{ selected.accent_color }};"></span>
+                      <span data-reader-feed-name>{{ selected.feed_name }}</span>
                       {% if selected.feed_host %}
-                        <span>{{ selected.feed_host }}</span>
+                        <span data-reader-feed-host>{{ selected.feed_host }}</span>
+                      {% else %}
+                        <span data-reader-feed-host></span>
                       {% endif %}
                     </div>
                   </div>
@@ -716,13 +720,13 @@
                   <div class="actions-row">
                     {% if mode == 'reader' %}
                       <span class="muted">Reader</span>
-                      <a href="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode=original&density={{ density }}&layout={{ layout }}">Original</a>
+                      <a href="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode=original&density={{ density }}&layout={{ layout }}" data-reader-toggle-link>Original</a>
                     {% else %}
-                      <a href="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode=reader&density={{ density }}&layout={{ layout }}">Reader</a>
+                      <a href="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode=reader&density={{ density }}&layout={{ layout }}" data-reader-toggle-link>Reader</a>
                       <span class="muted">Original</span>
                     {% endif %}
-                    <a href="{{ selected.url }}" target="_blank" rel="noopener">Open in new tab</a>
-                    <form method="post" action="{{ base_path }}/articles/{{ selected.id }}/archive" class="inline-form">
+                    <a href="{{ selected.url }}" target="_blank" rel="noopener" data-reader-open-link>Open in new tab</a>
+                    <form method="post" action="{{ base_path }}/articles/{{ selected.id }}/archive" class="inline-form" data-reader-archive-form>
                       <input type="hidden" name="_csrf" value="{{ csrf }}" />
                       <button type="submit" class="button-secondary">Archive</button>
                     </form>
@@ -733,7 +737,7 @@
               {% if mode == 'original' %}
                 <iframe class="inbox__iframe" src="{{ selected.url }}" title="{{ selected.title }}"></iframe>
               {% else %}
-                <iframe class="inbox__iframe" src="{{ base_path }}/articles/{{ selected.id }}/embed?mode={{ mode }}&density={{ density }}&layout={{ layout }}" title="{{ selected.title }}"></iframe>
+                <iframe class="inbox__iframe" data-reader-iframe src="{{ base_path }}/articles/{{ selected.id }}/embed?mode={{ mode }}&density={{ density }}&layout={{ layout }}" title="{{ selected.title }}"></iframe>
               {% endif %}
             </div>
 
@@ -742,14 +746,14 @@
                 <div class="column-heading">
                   <div>
                     <span class="eyebrow">Publish</span>
-                    <h2 class="column-heading__title" style="margin-top: 2px;">{{ selected.title }}</h2>
+                    <h2 class="column-heading__title" style="margin-top: 2px;" data-publish-title>{{ selected.title }}</h2>
                   </div>
                 </div>
                 <form method="post" action="{{ base_path }}/posts" class="form-stack">
                   <input type="hidden" name="_csrf" value="{{ csrf }}" />
                   <input type="hidden" name="_submit_token" value="{{ submit_token }}" />
-                  <input type="hidden" name="article_id" value="{{ selected.id }}" />
-                  <input type="hidden" name="return_to" value="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode={{ mode }}&density={{ density }}&layout={{ layout }}" />
+                  <input type="hidden" name="article_id" value="{{ selected.id }}" data-publish-article-id />
+                  <input type="hidden" name="return_to" value="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode={{ mode }}&density={{ density }}&layout={{ layout }}" data-publish-return-to />
                   <label>
                     Comment
                     <textarea id="article-comment" name="comment" rows="4" style="width: 100%;"></textarea>
@@ -911,6 +915,79 @@
 
         event.preventDefault();
         window.location.href = storyLinks[nextIndex].href;
+      });
+    })();
+
+    (function () {
+      var mainPanel = document.getElementById('reader-main');
+      if (!mainPanel) return;
+
+      var readerTitle = document.querySelector('[data-reader-title]');
+      var readerFavicon = document.querySelector('[data-reader-favicon]');
+      var readerAccent = document.querySelector('[data-reader-accent]');
+      var readerFeedName = document.querySelector('[data-reader-feed-name]');
+      var readerFeedHost = document.querySelector('[data-reader-feed-host]');
+      var readerToggleLink = document.querySelector('[data-reader-toggle-link]');
+      var readerOpenLink = document.querySelector('[data-reader-open-link]');
+      var readerArchiveForm = document.querySelector('[data-reader-archive-form]');
+      var readerIframe = document.querySelector('[data-reader-iframe]');
+      var publishTitle = document.querySelector('[data-publish-title]');
+      var publishArticleId = document.querySelector('[data-publish-article-id]');
+      var publishReturnTo = document.querySelector('[data-publish-return-to]');
+      var generateButton = document.querySelector('[data-generate-comment]');
+      var commentTextarea = document.getElementById('article-comment');
+      var commentLength = document.getElementById('article-comment-length');
+
+      window.addEventListener('message', function (event) {
+        var data = event.data || {};
+        if (data.type !== 'echotree-follow-link' || !data.url || !data.followBase || !data.followParams) return;
+
+        fetch(data.followBase + 'url=' + encodeURIComponent(data.url) + '&' + data.followParams + '&format=json', {
+          headers: { 'Accept': 'application/json' }
+        })
+          .then(function (res) {
+            if (!res.ok) throw new Error('follow_failed');
+            return res.json();
+          })
+          .then(function (payload) {
+            if (!payload || !payload.ok || !payload.article) throw new Error('follow_failed');
+            var article = payload.article;
+            if (readerTitle) readerTitle.textContent = article.title;
+            if (publishTitle) publishTitle.textContent = article.title;
+            if (readerFeedName) readerFeedName.textContent = article.feed_name || '';
+            if (readerFeedHost) readerFeedHost.textContent = article.feed_host || '';
+            if (readerAccent) readerAccent.style.background = article.accent_color || '#84b316';
+            if (readerFavicon) {
+              if (article.favicon_url) {
+                readerFavicon.src = article.favicon_url;
+                readerFavicon.style.display = '';
+              } else {
+                readerFavicon.style.display = 'none';
+              }
+            }
+            if (readerToggleLink) readerToggleLink.href = article.original_toggle_url;
+            if (readerOpenLink) readerOpenLink.href = article.url;
+            if (readerArchiveForm) readerArchiveForm.action = article.archive_url;
+            if (readerIframe) {
+              readerIframe.src = article.mode === 'original' ? article.url : article.embed_url;
+              readerIframe.title = article.title;
+            }
+            if (publishArticleId) publishArticleId.value = String(article.id);
+            if (publishReturnTo) publishReturnTo.value = article.return_to;
+            if (generateButton) generateButton.setAttribute('data-article-id', String(article.id));
+            if (commentTextarea) {
+              commentTextarea.value = '';
+            }
+            if (commentLength) {
+              commentLength.textContent = '0';
+            }
+            if (article.return_to && window.history && window.history.replaceState) {
+              window.history.replaceState({}, '', article.return_to);
+            }
+          })
+          .catch(function () {
+            window.location.href = data.followBase + 'url=' + encodeURIComponent(data.url) + '&' + data.followParams;
+          });
       });
     })();
 

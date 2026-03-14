@@ -175,6 +175,44 @@ function upsert_manual_article_from_url(PDO $pdo, string $url): ?int
     return (int) $pdo->lastInsertId();
 }
 
+function article_reader_payload(array $article, string $mode, string $density, string $layout, string $basePath): array
+{
+    $safeMode = $mode === 'original' ? 'original' : 'reader';
+    $safeDensity = $density === 'compact' ? 'compact' : 'comfortable';
+    $safeLayout = in_array($layout, ['split', 'magazine', 'grid'], true) ? $layout : 'split';
+
+    return [
+        'id' => (int) $article['id'],
+        'title' => (string) $article['title'],
+        'url' => (string) $article['url'],
+        'feed_name' => (string) ($article['feed_name'] ?? ''),
+        'feed_host' => (string) ($article['feed_host'] ?? ''),
+        'favicon_url' => (string) ($article['favicon_url'] ?? ''),
+        'accent_color' => (string) ($article['accent_color'] ?? '#84b316'),
+        'mode' => $safeMode,
+        'density' => $safeDensity,
+        'layout' => $safeLayout,
+        'embed_url' => $basePath . '/articles/' . (int) $article['id'] . '/embed?' . http_build_query([
+            'mode' => $safeMode,
+            'density' => $safeDensity,
+            'layout' => $safeLayout,
+        ]),
+        'original_toggle_url' => $basePath . '/articles?' . http_build_query([
+            'selected' => (int) $article['id'],
+            'mode' => $safeMode === 'reader' ? 'original' : 'reader',
+            'density' => $safeDensity,
+            'layout' => $safeLayout,
+        ]),
+        'archive_url' => $basePath . '/articles/' . (int) $article['id'] . '/archive',
+        'return_to' => $basePath . '/articles?' . http_build_query([
+            'selected' => (int) $article['id'],
+            'mode' => $safeMode,
+            'density' => $safeDensity,
+            'layout' => $safeLayout,
+        ]),
+    ];
+}
+
 function register_article_routes(App $app): void
 {
     $app->get('/articles', function ($request, $response) {
@@ -274,12 +312,36 @@ function register_article_routes(App $app): void
         $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'reader';
         $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'comfortable';
         $layout = isset($queryParams['layout']) ? (string) $queryParams['layout'] : 'split';
+        $format = isset($queryParams['format']) ? (string) $queryParams['format'] : '';
 
         $articleId = upsert_manual_article_from_url($pdo, $url);
         if ($articleId === null) {
+            if ($format === 'json') {
+                $response->getBody()->write(json_encode(['ok' => false, 'error' => 'invalid_url']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            }
             return $response
                 ->withHeader('Location', url_for($request, '/articles?error=1'))
                 ->withStatus(302);
+        }
+
+        $article = find_article_with_feed($pdo, $articleId);
+        if (!$article) {
+            if ($format === 'json') {
+                $response->getBody()->write(json_encode(['ok' => false, 'error' => 'not_found']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            }
+            return $response
+                ->withHeader('Location', url_for($request, '/articles?error=1'))
+                ->withStatus(302);
+        }
+
+        if ($format === 'json') {
+            $response->getBody()->write(json_encode([
+                'ok' => true,
+                'article' => article_reader_payload($article, $mode, $density, $layout, base_path($request)),
+            ]));
+            return $response->withHeader('Content-Type', 'application/json');
         }
 
         $redirectQuery = http_build_query([
@@ -643,8 +705,7 @@ function register_article_routes(App $app): void
             . 'var href=link.getAttribute("href")||"";'
             . 'if(!/^https?:\\/\\//i.test(href)){return;}'
             . 'event.preventDefault();'
-            . 'window.top.location=' . json_encode($followBase) . '+'
-            . 'encodeURIComponent(href)+"&' . $followParams . '";'
+            . 'window.top.postMessage({type:"echotree-follow-link",url:href,followBase:' . json_encode($followBase) . ',followParams:' . json_encode($followParams) . '},"*");'
             . '});'
             . '</script></body></html>';
 
