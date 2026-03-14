@@ -733,7 +733,7 @@
               {% if mode == 'original' %}
                 <iframe class="inbox__iframe" src="{{ selected.url }}" title="{{ selected.title }}"></iframe>
               {% else %}
-                <iframe class="inbox__iframe" src="{{ base_path }}/articles/{{ selected.id }}/embed" title="{{ selected.title }}"></iframe>
+                <iframe class="inbox__iframe" src="{{ base_path }}/articles/{{ selected.id }}/embed?mode={{ mode }}&density={{ density }}&layout={{ layout }}" title="{{ selected.title }}"></iframe>
               {% endif %}
             </div>
 

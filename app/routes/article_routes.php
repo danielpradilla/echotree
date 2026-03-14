@@ -104,6 +104,77 @@ function find_recent_duplicate_post(PDO $pdo, int $articleId, string $comment, a
     return null;
 }
 
+function manual_feed_id(PDO $pdo): int
+{
+    $feedStmt = $pdo->prepare('SELECT id FROM feeds WHERE url = :url');
+    $feedStmt->execute([':url' => 'manual://local']);
+    $feedRow = $feedStmt->fetch();
+    if ($feedRow) {
+        return (int) $feedRow['id'];
+    }
+
+    $insertFeed = $pdo->prepare(
+        'INSERT INTO feeds (name, url, is_active) VALUES (:name, :url, :is_active)'
+    );
+    $insertFeed->execute([
+        ':name' => 'Manual',
+        ':url' => 'manual://local',
+        ':is_active' => 0,
+    ]);
+
+    return (int) $pdo->lastInsertId();
+}
+
+function upsert_manual_article_from_url(PDO $pdo, string $url): ?int
+{
+    if ($url === '' || !filter_var($url, FILTER_VALIDATE_URL)) {
+        return null;
+    }
+
+    $exists = $pdo->prepare('SELECT id FROM articles WHERE url = :url');
+    $exists->execute([':url' => $url]);
+    $row = $exists->fetch();
+
+    $extracted = extract_article_from_url($url, 15);
+    $title = trim((string) ($extracted['title'] ?? ''));
+    $contentHtml = (string) ($extracted['content_html'] ?? '');
+    $contentText = (string) ($extracted['content_text'] ?? '');
+
+    if ($row) {
+        $articleId = (int) $row['id'];
+        if ($contentHtml !== '' || $contentText !== '' || $title !== '') {
+            $update = $pdo->prepare(
+                'UPDATE articles SET title = :title, content_html = :content_html, content_text = :content_text '
+                . 'WHERE id = :id'
+            );
+            $update->execute([
+                ':title' => $title !== '' ? $title : $url,
+                ':content_html' => $contentHtml,
+                ':content_text' => $contentText,
+                ':id' => $articleId,
+            ]);
+        }
+        return $articleId;
+    }
+
+    $feedId = manual_feed_id($pdo);
+    $insertArticle = $pdo->prepare(
+        'INSERT INTO articles (feed_id, title, url, content_html, content_text, summary, published_at) '
+        . 'VALUES (:feed_id, :title, :url, :content_html, :content_text, :summary, :published_at)'
+    );
+    $insertArticle->execute([
+        ':feed_id' => $feedId,
+        ':title' => $title !== '' ? $title : $url,
+        ':url' => $url,
+        ':content_html' => $contentHtml,
+        ':content_text' => $contentText,
+        ':summary' => null,
+        ':published_at' => null,
+    ]);
+
+    return (int) $pdo->lastInsertId();
+}
+
 function register_article_routes(App $app): void
 {
     $app->get('/articles', function ($request, $response) {
@@ -196,6 +267,33 @@ function register_article_routes(App $app): void
     $app->post('/articles/archive-all', $archiveAll);
     $app->post('/articles/mark-all-read', $archiveAll);
 
+    $app->get('/articles/follow', function ($request, $response) {
+        $pdo = db_connection();
+        $queryParams = $request->getQueryParams();
+        $url = trim((string) ($queryParams['url'] ?? ''));
+        $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'reader';
+        $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'comfortable';
+        $layout = isset($queryParams['layout']) ? (string) $queryParams['layout'] : 'split';
+
+        $articleId = upsert_manual_article_from_url($pdo, $url);
+        if ($articleId === null) {
+            return $response
+                ->withHeader('Location', url_for($request, '/articles?error=1'))
+                ->withStatus(302);
+        }
+
+        $redirectQuery = http_build_query([
+            'selected' => $articleId,
+            'mode' => $mode === 'original' ? 'original' : 'reader',
+            'density' => $density === 'compact' ? 'compact' : 'comfortable',
+            'layout' => in_array($layout, ['split', 'magazine', 'grid'], true) ? $layout : 'split',
+        ]);
+
+        return $response
+            ->withHeader('Location', url_for($request, '/articles?' . $redirectQuery))
+            ->withStatus(302);
+    });
+
     $app->map(['GET', 'POST'], '/share', function ($request, $response) {
         $pdo = db_connection();
         $queryParams = $request->getQueryParams();
@@ -211,68 +309,7 @@ function register_article_routes(App $app): void
             if ($url === '' || !filter_var($url, FILTER_VALIDATE_URL)) {
                 $error = 'Please enter a valid URL.';
             } else {
-                $exists = $pdo->prepare('SELECT id FROM articles WHERE url = :url');
-                $exists->execute([':url' => $url]);
-                $row = $exists->fetch();
-                if ($row) {
-                    $selectedId = (int) $row['id'];
-                    $extracted = extract_article_from_url($url, 15);
-                    $title = trim((string) ($extracted['title'] ?? ''));
-                    $contentHtml = (string) ($extracted['content_html'] ?? '');
-                    $contentText = (string) ($extracted['content_text'] ?? '');
-
-                    if ($contentHtml !== '' || $contentText !== '' || $title !== '') {
-                        $update = $pdo->prepare(
-                            'UPDATE articles SET title = :title, content_html = :content_html, content_text = :content_text '
-                            . 'WHERE id = :id'
-                        );
-                        $update->execute([
-                            ':title' => $title !== '' ? $title : $url,
-                            ':content_html' => $contentHtml,
-                            ':content_text' => $contentText,
-                            ':id' => $selectedId,
-                        ]);
-                    }
-                } else {
-                    $feedId = null;
-                    $feedStmt = $pdo->prepare('SELECT id FROM feeds WHERE url = :url');
-                    $feedStmt->execute([':url' => 'manual://local']);
-                    $feedRow = $feedStmt->fetch();
-                    if ($feedRow) {
-                        $feedId = (int) $feedRow['id'];
-                    } else {
-                        $insertFeed = $pdo->prepare(
-                            'INSERT INTO feeds (name, url, is_active) VALUES (:name, :url, :is_active)'
-                        );
-                        $insertFeed->execute([
-                            ':name' => 'Manual',
-                            ':url' => 'manual://local',
-                            ':is_active' => 0,
-                        ]);
-                        $feedId = (int) $pdo->lastInsertId();
-                    }
-
-                    $extracted = extract_article_from_url($url, 15);
-                    $title = trim((string) ($extracted['title'] ?? ''));
-                    $contentHtml = (string) ($extracted['content_html'] ?? '');
-                    $contentText = (string) ($extracted['content_text'] ?? '');
-
-                    $insertArticle = $pdo->prepare(
-                        'INSERT INTO articles (feed_id, title, url, content_html, content_text, summary, published_at) '
-                        . 'VALUES (:feed_id, :title, :url, :content_html, :content_text, :summary, :published_at)'
-                    );
-                    $insertArticle->execute([
-                        ':feed_id' => $feedId,
-                        ':title' => $title !== '' ? $title : $url,
-                        ':url' => $url,
-                        ':content_html' => $contentHtml,
-                        ':content_text' => $contentText,
-                        ':summary' => null,
-                        ':published_at' => null,
-                    ]);
-
-                    $selectedId = (int) $pdo->lastInsertId();
-                }
+                $selectedId = upsert_manual_article_from_url($pdo, $url);
             }
         }
 
@@ -519,6 +556,10 @@ function register_article_routes(App $app): void
     $app->get('/articles/{id}/embed', function ($request, $response, $args) {
         $articleId = (int) ($args['id'] ?? 0);
         $pdo = db_connection();
+        $queryParams = $request->getQueryParams();
+        $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'reader';
+        $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'comfortable';
+        $layout = isset($queryParams['layout']) ? (string) $queryParams['layout'] : 'split';
 
         $stmt = $pdo->prepare('SELECT title, content_html, content_text FROM articles WHERE id = :id');
         $stmt->execute([':id' => $articleId]);
@@ -578,6 +619,13 @@ function register_article_routes(App $app): void
             }
         }
 
+        $followBase = base_path($request) . '/articles/follow?';
+        $followParams = http_build_query([
+            'mode' => $mode === 'original' ? 'original' : 'reader',
+            'density' => $density === 'compact' ? 'compact' : 'comfortable',
+            'layout' => in_array($layout, ['split', 'magazine', 'grid'], true) ? $layout : 'split',
+        ]);
+
         $html = '<!doctype html><html><head><meta charset="utf-8" />'
             . '<meta name="viewport" content="width=device-width, initial-scale=1" />'
             . '<style>body{font-family:ui-serif,Georgia,Cambria,Times New Roman,Times,serif;'
@@ -587,7 +635,18 @@ function register_article_routes(App $app): void
             . 'h1,h2,h3{line-height:1.3;margin:0 0 12px;}'
             . 'img,video{max-width:100%;height:auto;}</style></head><body><div class="reader">'
             . $body
-            . '</div></body></html>';
+            . '</div><script>'
+            . 'document.addEventListener("click",function(event){'
+            . 'if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey){return;}'
+            . 'var link=event.target&&event.target.closest?event.target.closest("a[href]"):null;'
+            . 'if(!link){return;}'
+            . 'var href=link.getAttribute("href")||"";'
+            . 'if(!/^https?:\\/\\//i.test(href)){return;}'
+            . 'event.preventDefault();'
+            . 'window.top.location=' . json_encode($followBase) . '+'
+            . 'encodeURIComponent(href)+"&' . $followParams . '";'
+            . '});'
+            . '</script></body></html>';
 
         $response->getBody()->write($html);
         return $response->withHeader('Content-Type', 'text/html');
