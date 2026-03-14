@@ -23,13 +23,14 @@
       justify-content: space-between;
       align-items: center;
       gap: 12px;
-      padding: 10px 14px;
+      padding: 4px 8px;
       border-bottom: 1px solid var(--line-soft);
       background: rgba(247, 248, 243, 0.94);
     }
     .reader-topbar__title {
-      font-size: 18px;
+      font-size: 16px;
       letter-spacing: -0.02em;
+      line-height: 1.1;
     }
     .reader-notice-bar {
       display: flex;
@@ -55,8 +56,8 @@
     .toggle-group {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 4px;
+      gap: 4px;
+      padding: 2px;
       border: 1px solid var(--border);
       border-radius: 10px;
       background: rgba(255, 255, 255, 0.88);
@@ -67,14 +68,14 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
-      min-width: 40px;
-      padding: 7px 10px;
+      min-width: 34px;
+      padding: 5px 8px;
       border: 1px solid transparent;
       border-radius: 8px;
       background: transparent;
       color: var(--muted);
       text-decoration: none;
-      font-size: 13px;
+      font-size: 12px;
       line-height: 1;
     }
     .toggle-chip:hover {
@@ -492,7 +493,7 @@
     }
     @media (max-width: 900px) {
       .reader-topbar {
-        padding: 10px 12px;
+        padding: 4px 6px;
       }
       .reader-shell { grid-template-columns: 1fr; }
       .reader-panel--nav,
