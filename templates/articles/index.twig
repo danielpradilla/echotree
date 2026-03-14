@@ -37,43 +37,6 @@
       gap: 8px;
       flex-wrap: wrap;
     }
-    .reader-view-preset {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 38px;
-      height: 28px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.88);
-      color: var(--muted);
-      cursor: pointer;
-      text-decoration: none;
-    }
-    .reader-view-preset:hover {
-      background: rgba(90, 170, 149, 0.08);
-      color: var(--ink);
-    }
-    .reader-view-preset.is-active {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-    }
-    .reader-view-preset__icon {
-      width: 18px;
-      height: 14px;
-      display: flex;
-      align-items: stretch;
-      justify-content: center;
-      gap: 2px;
-    }
-    .reader-view-preset__icon span {
-      display: block;
-      width: 3px;
-      height: 100%;
-      border-radius: 999px;
-      background: currentColor;
-    }
     .toggle-group {
       display: inline-flex;
       align-items: center;
@@ -461,11 +424,6 @@
     .panel-head .panel-kicker {
       margin-bottom: 0;
     }
-    .reader-header-controls {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
     .column-heading {
       display: flex;
       justify-content: space-between;
@@ -557,17 +515,6 @@
       <div class="reader-topbar__controls">
         <button type="button" class="inbox__toggle button-secondary" data-toggle-target="nav" style="display: none;">Show sites</button>
         <button type="button" class="inbox__toggle button-secondary" data-toggle-target="stories" style="display: none;">Show stories</button>
-        <div class="reader-header-controls">
-          <button type="button" class="reader-view-preset is-active" data-view-preset="full" title="Show sites, stories, reader, and publish" aria-label="Show full layout">
-            <span class="reader-view-preset__icon" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
-          </button>
-          <button type="button" class="reader-view-preset" data-view-preset="stories" title="Hide sites" aria-label="Hide sites">
-            <span class="reader-view-preset__icon" aria-hidden="true"><span></span><span></span><span></span></span>
-          </button>
-          <button type="button" class="reader-view-preset" data-view-preset="reader" title="Hide sites and stories" aria-label="Hide sites and stories">
-            <span class="reader-view-preset__icon" aria-hidden="true"><span></span><span></span></span>
-          </button>
-        </div>
         {% set density_base = base_path ~ '/articles?' %}
         {% if active_feed_id %}
           {% set density_base = density_base ~ 'feed_id=' ~ active_feed_id ~ '&' %}
@@ -877,25 +824,11 @@
   <script>
     (function () {
       var toggles = document.querySelectorAll('.inbox__toggle');
-      var viewPresets = document.querySelectorAll('[data-view-preset]');
       var shell = document.querySelector('[data-reader-shell]');
       var panels = {
         nav: document.querySelector('.reader-panel--nav'),
         stories: document.querySelector('.reader-panel--stories')
       };
-
-      function setDesktopToggleState() {
-        if (!shell) return;
-        var preset = 'full';
-        if (shell.classList.contains('is-nav-collapsed') && shell.classList.contains('is-stories-collapsed')) {
-          preset = 'reader';
-        } else if (shell.classList.contains('is-nav-collapsed')) {
-          preset = 'stories';
-        }
-        viewPresets.forEach(function (button) {
-          button.classList.toggle('is-active', button.getAttribute('data-view-preset') === preset);
-        });
-      }
 
       function applyState() {
         toggles.forEach(function (toggle) {
@@ -913,22 +846,7 @@
             panel.classList.remove('is-collapsed');
           }
         });
-        setDesktopToggleState();
       }
-
-      viewPresets.forEach(function (button) {
-        button.addEventListener('click', function () {
-          if (!shell || window.innerWidth <= 900) return;
-          var preset = button.getAttribute('data-view-preset');
-          shell.classList.remove('is-nav-collapsed', 'is-stories-collapsed');
-          if (preset === 'stories') {
-            shell.classList.add('is-nav-collapsed');
-          } else if (preset === 'reader') {
-            shell.classList.add('is-nav-collapsed', 'is-stories-collapsed');
-          }
-          setDesktopToggleState();
-        });
-      });
 
       toggles.forEach(function (toggle) {
         toggle.addEventListener('click', function () {
