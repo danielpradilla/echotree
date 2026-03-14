@@ -9,7 +9,7 @@ function register_core_routes(App $app): void
 {
     $app->get('/', function ($request, $response) {
         return $response
-            ->withHeader('Location', url_for($request, '/scheduled'))
+            ->withHeader('Location', url_for($request, '/articles'))
             ->withStatus(302);
     });
 

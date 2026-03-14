@@ -112,13 +112,25 @@ function register_article_routes(App $app): void
         $feedId = isset($queryParams['feed_id']) ? (int) $queryParams['feed_id'] : null;
         $selectedId = isset($queryParams['selected']) ? (int) $queryParams['selected'] : null;
         $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'reader';
+        $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'comfortable';
+        $layout = isset($queryParams['layout']) ? (string) $queryParams['layout'] : 'split';
 
-        $feeds = list_non_manual_feeds($pdo);
+        $feeds = list_feed_navigation($pdo);
         $articles = list_articles_with_feed($pdo, $feedId);
+
+        if ($selectedId === null && count($articles) > 0) {
+            $selectedId = (int) $articles[0]['id'];
+        }
 
         $selectedArticle = null;
         if ($selectedId) {
             $selectedArticle = find_article_with_feed($pdo, $selectedId);
+            if ($selectedArticle && $feedId && (int) $selectedArticle['feed_id'] !== $feedId) {
+                $selectedArticle = null;
+            }
+        }
+        if ($selectedArticle === null && count($articles) > 0) {
+            $selectedArticle = find_article_with_feed($pdo, (int) $articles[0]['id']);
         }
 
         $accounts = list_active_accounts($pdo);
@@ -135,6 +147,8 @@ function register_article_routes(App $app): void
             'selected' => $selectedArticle,
             'accounts' => $accounts,
             'mode' => $mode === 'original' ? 'original' : 'reader',
+            'density' => $density === 'compact' ? 'compact' : 'comfortable',
+            'layout' => in_array($layout, ['split', 'magazine', 'grid'], true) ? $layout : 'split',
             'status' => $queryParams['status'] ?? null,
             'error' => $queryParams['error'] ?? null,
             'post_details' => $postDetails,
@@ -143,6 +157,7 @@ function register_article_routes(App $app): void
             'base_path' => base_path($request),
             'default_schedule_input' => echotree_schedule_default_input(),
             'schedule_timezone' => echotree_schedule_timezone_id(),
+            'river_label' => $feedId ? 'Site' : 'All stories',
         ]);
     });
 

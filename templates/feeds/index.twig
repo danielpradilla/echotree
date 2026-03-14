@@ -10,6 +10,37 @@
       <a href="{{ base_path }}/feeds/new">Add feed</a>
     </div>
   </div>
+  {% if status == 'imported' %}
+    <div class="card" style="margin-bottom: 18px;">
+      <p class="muted" style="margin-bottom: 0;">Imported {{ imported }} feeds. Skipped {{ skipped }} duplicates.</p>
+    </div>
+  {% elseif error == 'upload_failed' %}
+    <div class="card" style="margin-bottom: 18px;">
+      <p class="status-pill">Upload failed. Please choose an OPML file exported from NewsBlur.</p>
+    </div>
+  {% elseif error == 'invalid_opml' %}
+    <div class="card" style="margin-bottom: 18px;">
+      <p class="status-pill">The file could not be parsed as a valid OPML feed export.</p>
+    </div>
+  {% endif %}
+  <div class="card" style="margin-bottom: 18px;">
+    <div class="page-header" style="margin-bottom: 14px;">
+      <div>
+        <h2 style="margin-bottom: 8px;">Import from NewsBlur</h2>
+        <p class="muted" style="margin-bottom: 0;">Export your sites from NewsBlur as OPML, then upload the file here.</p>
+      </div>
+    </div>
+    <form method="post" action="{{ base_path }}/feeds/import" enctype="multipart/form-data" class="form-stack">
+      <input type="hidden" name="_csrf" value="{{ csrf }}" />
+      <label>
+        OPML file
+        <input type="file" name="opml_file" accept=".opml,.xml,text/xml,application/xml" required />
+      </label>
+      <div class="actions-row">
+        <button type="submit">Import feeds</button>
+      </div>
+    </form>
+  </div>
   <div class="card">
     {% if feeds|length == 0 %}
       <div class="empty-state muted">No feeds yet.</div>
