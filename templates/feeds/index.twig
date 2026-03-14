@@ -35,38 +35,46 @@
       white-space: nowrap;
     }
     .feeds-table__actions {
-      width: 220px;
+      width: 190px;
+      vertical-align: top;
     }
     .feeds-table__actions-row {
       display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px 6px;
     }
     .feeds-table__actions-row a,
     .feeds-table__actions-row button {
       font-size: 12px;
       line-height: 1.1;
+      min-height: 30px;
     }
     .feeds-table__actions-row a {
       display: inline-flex;
       align-items: center;
-      padding: 6px 0;
+      justify-content: center;
+      padding: 6px 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      text-decoration: none;
+      color: var(--accent-color);
+      background: var(--surface-color);
     }
     .feeds-table__actions-row button {
-      width: 100%;
-      padding: 6px 8px;
-      border-radius: 8px;
+      width: auto;
+      padding: 6px 10px;
+      border-radius: 999px;
     }
     .feeds-table__actions-row form {
-      width: 100%;
+      width: auto;
     }
     @media (max-width: 900px) {
       .feeds-table__url {
         max-width: 220px;
       }
       .feeds-table__actions {
-        width: 180px;
+        width: 170px;
       }
     }
   </style>
