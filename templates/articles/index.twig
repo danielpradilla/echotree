@@ -659,7 +659,7 @@
                 <div class="panel-kicker">All stories</div>
               {% endif %}
             </div>
-            <strong>{% if active_feed_id %}Stories{% else %}All stories{% endif %}</strong>
+            <strong>{% if active_feed_id %}&nbsp;{% else %}All stories{% endif %}</strong>
           </div>
           <div class="actions-row">
             <form method="post" action="{{ base_path }}/articles/archive-all">
