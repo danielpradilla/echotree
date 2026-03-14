@@ -878,6 +878,22 @@
     })();
 
     (function () {
+      var storiesPanel = document.querySelector('.reader-panel--stories');
+      var activeStory = document.querySelector('.story-item.active');
+      if (!storiesPanel || !activeStory) return;
+
+      window.requestAnimationFrame(function () {
+        var panelRect = storiesPanel.getBoundingClientRect();
+        var itemRect = activeStory.getBoundingClientRect();
+        var above = itemRect.top < panelRect.top;
+        var below = itemRect.bottom > panelRect.bottom;
+        if (above || below) {
+          activeStory.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
+      });
+    })();
+
+    (function () {
       var mainPanel = document.getElementById('reader-main');
       var hasSelected = {{ selected ? 'true' : 'false' }};
       if (!mainPanel || !hasSelected) return;
