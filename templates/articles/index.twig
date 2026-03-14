@@ -16,20 +16,85 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 16px;
-      padding: 14px 18px;
+      gap: 12px;
+      padding: 10px 14px;
       border-bottom: 1px solid var(--line-soft);
       background: rgba(247, 248, 243, 0.94);
     }
     .reader-topbar__title {
-      font-size: 20px;
+      font-size: 18px;
       letter-spacing: -0.02em;
     }
     .reader-topbar__controls {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
+    }
+    .reader-toggle-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .reader-panel-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.88);
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .reader-panel-toggle:hover {
+      background: rgba(90, 170, 149, 0.08);
+      color: var(--ink);
+    }
+    .reader-panel-toggle.is-active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .reader-panel-toggle__icon {
+      position: relative;
+      width: 14px;
+      height: 14px;
+      display: inline-block;
+    }
+    .reader-panel-toggle--nav .reader-panel-toggle__icon::before,
+    .reader-panel-toggle--nav .reader-panel-toggle__icon::after,
+    .reader-panel-toggle--stories .reader-panel-toggle__icon::before,
+    .reader-panel-toggle--stories .reader-panel-toggle__icon::after {
+      content: "";
+      position: absolute;
+      background: currentColor;
+      border-radius: 2px;
+    }
+    .reader-panel-toggle--nav .reader-panel-toggle__icon::before {
+      left: 1px;
+      top: 1px;
+      bottom: 1px;
+      width: 4px;
+    }
+    .reader-panel-toggle--nav .reader-panel-toggle__icon::after {
+      right: 1px;
+      top: 2px;
+      bottom: 2px;
+      width: 7px;
+    }
+    .reader-panel-toggle--stories .reader-panel-toggle__icon::before {
+      top: 1px;
+      left: 1px;
+      right: 1px;
+      height: 4px;
+    }
+    .reader-panel-toggle--stories .reader-panel-toggle__icon::after {
+      bottom: 1px;
+      left: 1px;
+      right: 1px;
+      height: 7px;
     }
     .toggle-group {
       display: inline-flex;
@@ -143,32 +208,52 @@
       display: grid;
       grid-template-columns: 220px 420px minmax(0, 1fr);
       gap: 0;
+      align-items: stretch;
     }
     .reader-panel {
       min-height: 0;
     }
     .reader-panel--nav,
     .reader-panel--stories {
-      max-height: calc(100vh - 220px);
+      max-height: calc(100vh - 175px);
       overflow: auto;
       background: rgba(245, 245, 239, 0.82);
+      scrollbar-width: thin;
     }
     .reader-panel--nav {
       border-right: 1px solid var(--line-soft);
-      padding: 14px 10px 18px;
+      padding: 12px 8px 14px;
     }
     .reader-panel--stories {
       border-right: 1px solid var(--line-soft);
-      padding: 14px 12px 18px;
+      padding: 12px 10px 14px;
       background: rgba(255, 255, 255, 0.92);
     }
     .reader-panel--main {
       background: rgba(255, 255, 255, 0.96);
-      padding: 14px 16px 18px;
+      padding: 12px 14px 16px;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .reader-shell.is-nav-collapsed {
+      grid-template-columns: 0 420px minmax(0, 1fr);
+    }
+    .reader-shell.is-stories-collapsed {
+      grid-template-columns: 220px 0 minmax(0, 1fr);
+    }
+    .reader-shell.is-nav-collapsed.is-stories-collapsed {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .reader-shell.is-nav-collapsed .reader-panel--nav,
+    .reader-shell.is-stories-collapsed .reader-panel--stories {
+      padding: 0;
+      border-right: 0;
+      overflow: hidden;
+      max-height: 0;
     }
     .story-item,
     .site-item {
-      padding: 10px 8px;
+      padding: 8px 7px;
       border-bottom: 1px solid var(--line-soft);
     }
     .story-list--compact .story-item {
@@ -196,22 +281,30 @@
     }
     .site-item {
       border-bottom: 0;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
     .site-link {
       display: grid !important;
       grid-template-columns: 20px minmax(0, 1fr);
-      gap: 10px;
+      gap: 8px;
       align-items: start;
     }
     .site-favicon {
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       border-radius: 4px;
       background: rgba(90, 170, 149, 0.14);
       border: 1px solid rgba(11, 93, 30, 0.08);
       object-fit: cover;
       margin-top: 1px;
+    }
+    .site-link strong {
+      font-size: 13px;
+      line-height: 1.2;
+    }
+    .site-link .muted {
+      font-size: 11px !important;
+      line-height: 1.25;
     }
     .site-item.active {
       box-shadow: inset 3px 0 0 #84b316;
@@ -357,7 +450,7 @@
       justify-content: space-between;
       align-items: center;
       gap: 10px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
     .inbox__meta {
       display: flex;
@@ -399,7 +492,7 @@
     }
     @media (max-width: 900px) {
       .reader-topbar {
-        padding: 12px 14px;
+        padding: 10px 12px;
       }
       .reader-shell { grid-template-columns: 1fr; }
       .reader-panel--nav,
@@ -419,6 +512,9 @@
       .story-list--grid {
         grid-template-columns: 1fr;
       }
+      .reader-toggle-bar {
+        display: none;
+      }
     }
   </style>
   <div class="reader-page">
@@ -429,6 +525,14 @@
         <div class="muted" style="font-size: 12px;">NewsBlur-style browsing with publishing built in.</div>
       </div>
       <div class="reader-topbar__controls">
+        <div class="reader-toggle-bar">
+          <button type="button" class="reader-panel-toggle reader-panel-toggle--nav is-active" data-desktop-toggle="nav" title="Toggle sites" aria-label="Toggle sites">
+            <span class="reader-panel-toggle__icon" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="reader-panel-toggle reader-panel-toggle--stories is-active" data-desktop-toggle="stories" title="Toggle stories" aria-label="Toggle stories">
+            <span class="reader-panel-toggle__icon" aria-hidden="true"></span>
+          </button>
+        </div>
         <button type="button" class="inbox__toggle button-secondary" data-toggle-target="nav" style="display: none;">Show sites</button>
         <button type="button" class="inbox__toggle button-secondary" data-toggle-target="stories" style="display: none;">Show stories</button>
         {% set density_base = base_path ~ '/articles?' %}
@@ -471,7 +575,7 @@
       </div>
     </div>
 
-    <div class="reader-shell">
+    <div class="reader-shell" data-reader-shell>
       <div class="reader-panel reader-panel--nav">
         <div class="panel-kicker">Sites</div>
         <div class="site-item {% if not active_feed_id %}active{% endif %}">
@@ -729,10 +833,23 @@
   <script>
     (function () {
       var toggles = document.querySelectorAll('.inbox__toggle');
+      var desktopToggles = document.querySelectorAll('[data-desktop-toggle]');
+      var shell = document.querySelector('[data-reader-shell]');
       var panels = {
         nav: document.querySelector('.reader-panel--nav'),
         stories: document.querySelector('.reader-panel--stories')
       };
+
+      function setDesktopToggleState() {
+        if (!shell) return;
+        desktopToggles.forEach(function (toggle) {
+          var target = toggle.getAttribute('data-desktop-toggle');
+          if (!target) return;
+          var collapsedClass = target === 'nav' ? 'is-nav-collapsed' : 'is-stories-collapsed';
+          var isCollapsed = shell.classList.contains(collapsedClass);
+          toggle.classList.toggle('is-active', !isCollapsed);
+        });
+      }
 
       function applyState() {
         toggles.forEach(function (toggle) {
@@ -750,7 +867,22 @@
             panel.classList.remove('is-collapsed');
           }
         });
+        setDesktopToggleState();
       }
+
+      desktopToggles.forEach(function (toggle) {
+        toggle.addEventListener('click', function () {
+          if (!shell || window.innerWidth <= 900) return;
+          var target = toggle.getAttribute('data-desktop-toggle');
+          if (target === 'nav') {
+            shell.classList.toggle('is-nav-collapsed');
+          }
+          if (target === 'stories') {
+            shell.classList.toggle('is-stories-collapsed');
+          }
+          setDesktopToggleState();
+        });
+      });
 
       toggles.forEach(function (toggle) {
         toggle.addEventListener('click', function () {
