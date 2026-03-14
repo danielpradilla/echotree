@@ -31,17 +31,12 @@
       gap: 8px;
       flex-wrap: wrap;
     }
-    .reader-toggle-bar {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
     .reader-panel-toggle {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 34px;
-      height: 34px;
+      width: 28px;
+      height: 28px;
       border: 1px solid var(--border);
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.88);
@@ -466,6 +461,16 @@
       text-transform: uppercase;
       color: var(--muted);
     }
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .panel-head .panel-kicker {
+      margin-bottom: 0;
+    }
     .site-title-row,
     .story-title-row {
       display: flex;
@@ -512,9 +517,6 @@
       .story-list--grid {
         grid-template-columns: 1fr;
       }
-      .reader-toggle-bar {
-        display: none;
-      }
     }
   </style>
   <div class="reader-page">
@@ -525,14 +527,6 @@
         <div class="muted" style="font-size: 12px;">NewsBlur-style browsing with publishing built in.</div>
       </div>
       <div class="reader-topbar__controls">
-        <div class="reader-toggle-bar">
-          <button type="button" class="reader-panel-toggle reader-panel-toggle--nav is-active" data-desktop-toggle="nav" title="Toggle sites" aria-label="Toggle sites">
-            <span class="reader-panel-toggle__icon" aria-hidden="true"></span>
-          </button>
-          <button type="button" class="reader-panel-toggle reader-panel-toggle--stories is-active" data-desktop-toggle="stories" title="Toggle stories" aria-label="Toggle stories">
-            <span class="reader-panel-toggle__icon" aria-hidden="true"></span>
-          </button>
-        </div>
         <button type="button" class="inbox__toggle button-secondary" data-toggle-target="nav" style="display: none;">Show sites</button>
         <button type="button" class="inbox__toggle button-secondary" data-toggle-target="stories" style="display: none;">Show stories</button>
         {% set density_base = base_path ~ '/articles?' %}
@@ -577,7 +571,12 @@
 
     <div class="reader-shell" data-reader-shell>
       <div class="reader-panel reader-panel--nav">
-        <div class="panel-kicker">Sites</div>
+        <div class="panel-head">
+          <div class="panel-kicker">Sites</div>
+          <button type="button" class="reader-panel-toggle reader-panel-toggle--nav is-active" data-desktop-toggle="nav" title="Collapse sites" aria-label="Collapse sites">
+            <span class="reader-panel-toggle__icon" aria-hidden="true"></span>
+          </button>
+        </div>
         <div class="site-item {% if not active_feed_id %}active{% endif %}">
           <a class="site-link" href="{{ base_path }}/articles?density={{ density }}&layout={{ layout }}">
             <span class="site-favicon" aria-hidden="true"></span>
@@ -603,9 +602,9 @@
                   <strong>{{ feed.name }}</strong>
                   <span class="count-pill">{{ feed.unread_count }}</span>
                 </div>
-                <div class="muted" style="font-size: 12px;">
-                  {{ feed.article_count }} stories{% if not feed.is_active %} · paused{% endif %}
-                </div>
+                {% if not feed.is_active %}
+                  <div class="muted" style="font-size: 12px;">Paused</div>
+                {% endif %}
               </div>
             </a>
           </div>
@@ -615,7 +614,12 @@
       <div class="reader-panel reader-panel--stories">
         <div class="story-toolbar">
           <div>
-            <div class="panel-kicker">{{ river_label }}</div>
+            <div class="panel-head" style="margin-bottom: 4px;">
+              <div class="panel-kicker">{{ river_label }}</div>
+              <button type="button" class="reader-panel-toggle reader-panel-toggle--stories is-active" data-desktop-toggle="stories" title="Collapse stories" aria-label="Collapse stories">
+                <span class="reader-panel-toggle__icon" aria-hidden="true"></span>
+              </button>
+            </div>
             <strong>{% if active_feed_id and selected %}{{ selected.feed_name }}{% elseif active_feed_id %}Selected site{% else %}All stories{% endif %}</strong>
           </div>
           <div class="actions-row">
@@ -636,7 +640,7 @@
             {% for article in articles %}
               {% set is_selected = selected and selected.id == article.id %}
               <div class="story-item {% if is_selected %}active{% endif %}" {% if is_selected %}style="border-color: {{ article.accent_color }}; box-shadow: 0 10px 24px rgba(11, 93, 30, 0.06);"{% endif %}>
-                <a class="story-card-link" href="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ article.id }}&mode={{ mode }}&density={{ density }}&layout={{ layout }}">
+                <a class="story-card-link" data-story-link href="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ article.id }}&mode={{ mode }}&density={{ density }}&layout={{ layout }}">
                   <div class="story-thumb {% if density == 'compact' %}story-thumb--compact{% endif %}">
                     {% if article.thumbnail_url %}
                       <img src="{{ article.thumbnail_url }}" alt="" loading="lazy" />
@@ -896,6 +900,36 @@
 
       window.addEventListener('resize', applyState);
       applyState();
+    })();
+
+    (function () {
+      var storyLinks = Array.prototype.slice.call(document.querySelectorAll('[data-story-link]'));
+      if (!storyLinks.length) return;
+
+      function isTypingTarget(node) {
+        if (!node) return false;
+        var tag = (node.tagName || '').toLowerCase();
+        return tag === 'input' || tag === 'textarea' || tag === 'select' || node.isContentEditable;
+      }
+
+      document.addEventListener('keydown', function (event) {
+        if (event.defaultPrevented || isTypingTarget(event.target)) return;
+        if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+
+        var currentIndex = -1;
+        storyLinks.forEach(function (link, index) {
+          if (link.closest('.story-item') && link.closest('.story-item').classList.contains('active')) {
+            currentIndex = index;
+          }
+        });
+        if (currentIndex === -1) return;
+
+        var nextIndex = event.key === 'ArrowDown' ? currentIndex + 1 : currentIndex - 1;
+        if (nextIndex < 0 || nextIndex >= storyLinks.length) return;
+
+        event.preventDefault();
+        window.location.href = storyLinks[nextIndex].href;
+      });
     })();
 
     (function () {
