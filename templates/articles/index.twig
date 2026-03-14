@@ -31,6 +31,21 @@
       font-size: 18px;
       letter-spacing: -0.02em;
     }
+    .reader-notice-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 10px 14px;
+      border-top: 1px solid var(--line-soft);
+      background: rgba(248, 249, 244, 0.94);
+      color: var(--ink);
+      font-size: 13px;
+    }
+    .reader-notice-bar ul {
+      margin: 0;
+      padding-left: 16px;
+    }
     .reader-topbar__controls {
       display: flex;
       align-items: center;
@@ -507,10 +522,23 @@
   </style>
   <div class="reader-page">
   <div class="reader-app">
+    {% set notice_message = '' %}
+    {% if status == 'shared' %}
+      {% set notice_message = 'Article shared.' %}
+    {% elseif status == 'duplicate_ignored' %}
+      {% set notice_message = 'Duplicate submit ignored.' %}
+    {% elseif status == 'rate_limited' %}
+      {% set notice_message = 'Article scheduled because of rate limits.' %}
+    {% elseif status == 'scheduled' %}
+      {% set notice_message = 'Article scheduled.' %}
+    {% elseif status == 'failed' %}
+      {% set notice_message = 'Share failed. Check account settings.' %}
+    {% elseif error %}
+      {% set notice_message = 'Please add a comment, schedule time, and at least one account.' %}
+    {% endif %}
     <div class="reader-topbar">
       <div>
-        <div class="reader-topbar__title">Reader workspace</div>
-        <div class="muted" style="font-size: 12px;">A focused reading workspace with publishing built in.</div>
+        <div class="reader-topbar__title">Reader</div>
       </div>
       <div class="reader-topbar__controls">
         <button type="button" class="inbox__toggle button-secondary" data-toggle-target="nav" style="display: none;">Show sites</button>
@@ -606,7 +634,9 @@
                 <div class="panel-kicker">All stories</div>
               {% endif %}
             </div>
-            <strong>{% if active_feed_id %}&nbsp;{% else %}All stories{% endif %}</strong>
+            {% if not active_feed_id %}
+              <strong>All stories</strong>
+            {% endif %}
           </div>
           <div class="actions-row">
             <form method="post" action="{{ base_path }}/articles/archive-all">
@@ -667,47 +697,6 @@
       <div class="reader-panel reader-panel--main" id="reader-main">
       <div class="reader-viewer">
         {% if selected %}
-          {% if status == 'shared' %}
-            <div class="card" style="margin-bottom: 12px;">
-              <p class="muted">Article shared.</p>
-            </div>
-          {% elseif status == 'duplicate_ignored' %}
-            <div class="card" style="margin-bottom: 12px;">
-              <p class="muted">Duplicate submit ignored.</p>
-            </div>
-          {% elseif status == 'rate_limited' %}
-            <div class="card" style="margin-bottom: 12px;">
-              <p class="muted">Article scheduled (rate limit).</p>
-            </div>
-          {% elseif status == 'scheduled' %}
-            <div class="card" style="margin-bottom: 12px;">
-              <p class="muted">Article scheduled.</p>
-            </div>
-          {% elseif status == 'failed' %}
-            <div class="card" style="margin-bottom: 12px;">
-              <p class="muted">Share failed. Check account settings.</p>
-            </div>
-          {% endif %}
-          {% if post_details %}
-            <div class="card" style="margin-bottom: 12px;">
-              <p class="muted">Per network:</p>
-              <ul style="margin: 8px 0 0 16px;">
-                {% for row in post_details %}
-                  <li class="muted">
-                    {{ row.platform }} — {{ row.status }}
-                    {% if row.status == 'failed' and row.error %}
-                      ({{ row.error }})
-                    {% endif %}
-                  </li>
-                {% endfor %}
-              </ul>
-            </div>
-          {% endif %}
-          {% if error %}
-            <div class="card" style="margin-bottom: 12px;">
-              <p class="status-pill">Please add a comment, schedule time, and at least one account</p>
-            </div>
-          {% endif %}
           <div class="reader-stage">
             <div class="reader-stage__article">
               <div class="reader-meta-card">
@@ -818,6 +807,26 @@
       </div>
       </div>
     </div>
+    {% if notice_message or post_details %}
+      <div class="reader-notice-bar">
+        <div>
+          {% if notice_message %}
+            {{ notice_message }}
+          {% else %}
+            Update available.
+          {% endif %}
+        </div>
+        {% if post_details %}
+          <ul>
+            {% for row in post_details %}
+              <li>
+                {{ row.platform }} — {{ row.status }}{% if row.status == 'failed' and row.error %} ({{ row.error }}){% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    {% endif %}
   </div>
   </div>
 

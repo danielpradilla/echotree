@@ -140,7 +140,7 @@ function register_article_routes(App $app): void
 
         $view = Twig::fromRequest($request);
         return $view->render($response, 'articles/index.twig', [
-            'title' => 'Articles',
+            'title' => 'Reader',
             'articles' => $articles,
             'feeds' => $feeds,
             'active_feed_id' => $feedId,
