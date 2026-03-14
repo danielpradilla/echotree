@@ -87,6 +87,14 @@
     <div class="card" style="margin-bottom: 18px;">
       <p class="muted" style="margin-bottom: 0;">Imported {{ imported }} feeds. Skipped {{ skipped }} duplicates.</p>
     </div>
+  {% elseif status == 'fetch_started' %}
+    <div class="card" style="margin-bottom: 18px;">
+      <p class="muted" style="margin-bottom: 0;">Feed fetch started in the background. Refresh this page in a bit to see updated timestamps.</p>
+    </div>
+  {% elseif status == 'fetch_failed' %}
+    <div class="card" style="margin-bottom: 18px;">
+      <p class="status-pill">Could not start the background feed fetcher on this server.</p>
+    </div>
   {% elseif error == 'upload_failed' %}
     <div class="card" style="margin-bottom: 18px;">
       <p class="status-pill">Upload failed. Please choose a valid OPML export file.</p>

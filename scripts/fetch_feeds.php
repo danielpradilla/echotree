@@ -9,6 +9,7 @@ load_env(__DIR__ . '/../.env');
 
 require __DIR__ . '/../vendor/autoload.php';
 require __DIR__ . '/../app/db.php';
+require __DIR__ . '/../app/feed_fetch_lock.php';
 require __DIR__ . '/../app/feed_fetcher.php';
 
 $pdo = db_connection();
@@ -23,13 +24,24 @@ foreach ($argv as $arg) {
     }
 }
 
-fetch_feeds(
-    $pdo,
-    [
-        'refresh' => $refresh,
-        'feed_id' => $feedId,
-    ],
-    function (string $line): void {
-        fwrite(STDOUT, $line);
-    }
-);
+$lockHandle = acquire_feed_fetch_lock();
+if ($lockHandle === null) {
+    fwrite(STDOUT, "Feed fetcher already running; skipping.\n");
+    exit(0);
+}
+
+try {
+    fetch_feeds(
+        $pdo,
+        [
+            'refresh' => $refresh,
+            'feed_id' => $feedId,
+        ],
+        function (string $line): void {
+            fwrite(STDOUT, $line);
+        }
+    );
+} finally {
+    flock($lockHandle, LOCK_UN);
+    fclose($lockHandle);
+}

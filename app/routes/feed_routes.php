@@ -5,6 +5,40 @@ declare(strict_types=1);
 use Slim\App;
 use Slim\Views\Twig;
 
+function launch_feed_fetcher_in_background(): bool
+{
+    $baseDir = dirname(__DIR__, 2);
+    $logsDir = $baseDir . '/logs';
+    if (!is_dir($logsDir) && !mkdir($logsDir, 0755, true) && !is_dir($logsDir)) {
+        return false;
+    }
+
+    $phpBin = getenv('ECHOTREE_PHP_BIN') ?: PHP_BINARY;
+    if (!is_string($phpBin) || $phpBin === '') {
+        $phpBin = '/usr/bin/php';
+    }
+
+    $command = sprintf(
+        'cd %s && nohup %s scripts/fetch_feeds.php >> %s 2>&1 &',
+        escapeshellarg($baseDir),
+        escapeshellarg($phpBin),
+        escapeshellarg($logsDir . '/fetch_feeds.log')
+    );
+
+    $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+    if (function_exists('exec') && !in_array('exec', $disabled, true)) {
+        exec($command);
+        return true;
+    }
+
+    if (function_exists('shell_exec') && !in_array('shell_exec', $disabled, true)) {
+        shell_exec($command);
+        return true;
+    }
+
+    return false;
+}
+
 function parse_opml_feeds(string $xml): array
 {
     if (trim($xml) === '') {
@@ -147,13 +181,10 @@ function register_feed_routes(App $app): void
     });
 
     $app->post('/feeds/fetch-all', function ($request, $response) {
-        $pdo = db_connection();
-        fetch_feeds($pdo, [
-            'refresh' => true,
-        ]);
+        $status = launch_feed_fetcher_in_background() ? 'fetch_started' : 'fetch_failed';
 
         return $response
-            ->withHeader('Location', url_for($request, '/feeds'))
+            ->withHeader('Location', url_for($request, '/feeds?status=' . $status))
             ->withStatus(302);
     });
 
