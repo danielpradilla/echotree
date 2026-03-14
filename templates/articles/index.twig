@@ -471,6 +471,11 @@
     .panel-head .panel-kicker {
       margin-bottom: 0;
     }
+    .reader-header-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
     .site-title-row,
     .story-title-row {
       display: flex;
@@ -573,9 +578,6 @@
       <div class="reader-panel reader-panel--nav">
         <div class="panel-head">
           <div class="panel-kicker">Sites</div>
-          <button type="button" class="reader-panel-toggle reader-panel-toggle--nav is-active" data-desktop-toggle="nav" title="Collapse sites" aria-label="Collapse sites">
-            <span class="reader-panel-toggle__icon" aria-hidden="true"></span>
-          </button>
         </div>
         <div class="site-item {% if not active_feed_id %}active{% endif %}">
           <a class="site-link" href="{{ base_path }}/articles?density={{ density }}&layout={{ layout }}">
@@ -616,9 +618,6 @@
           <div>
             <div class="panel-head" style="margin-bottom: 4px;">
               <div class="panel-kicker">{{ river_label }}</div>
-              <button type="button" class="reader-panel-toggle reader-panel-toggle--stories is-active" data-desktop-toggle="stories" title="Collapse stories" aria-label="Collapse stories">
-                <span class="reader-panel-toggle__icon" aria-hidden="true"></span>
-              </button>
             </div>
             <strong>{% if active_feed_id and selected %}{{ selected.feed_name }}{% elseif active_feed_id %}Selected site{% else %}All stories{% endif %}</strong>
           </div>
@@ -740,6 +739,14 @@
                     </div>
                   </div>
                   <div class="actions-row">
+                    <div class="reader-header-controls">
+                      <button type="button" class="reader-panel-toggle reader-panel-toggle--nav is-active" data-desktop-toggle="nav" title="Toggle sites" aria-label="Toggle sites">
+                        <span class="reader-panel-toggle__icon" aria-hidden="true"></span>
+                      </button>
+                      <button type="button" class="reader-panel-toggle reader-panel-toggle--stories is-active" data-desktop-toggle="stories" title="Toggle stories" aria-label="Toggle stories">
+                        <span class="reader-panel-toggle__icon" aria-hidden="true"></span>
+                      </button>
+                    </div>
                     {% if mode == 'reader' %}
                       <span class="muted">Reader</span>
                       <a href="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode=original&density={{ density }}&layout={{ layout }}">Original</a>
