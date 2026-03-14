@@ -631,7 +631,11 @@
         <div class="story-toolbar">
           <div>
             <div class="panel-head" style="margin-bottom: 4px;">
-              <div class="panel-kicker">{{ river_label }}</div>
+              {% if active_feed_id %}
+                <div class="panel-kicker">{{ river_label }}</div>
+              {% else %}
+                <div class="panel-kicker">River</div>
+              {% endif %}
             </div>
             <strong>{% if active_feed_id and selected %}{{ selected.feed_name }}{% elseif active_feed_id %}Selected site{% else %}All stories{% endif %}</strong>
           </div>
