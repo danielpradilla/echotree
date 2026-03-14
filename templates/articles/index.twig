@@ -407,7 +407,7 @@
     }
     .reader-stage__compose {
       position: sticky;
-      top: 12px;
+      top: 0;
       border-left: 1px solid var(--line-soft);
       padding-left: 14px;
       align-self: start;
@@ -640,13 +640,15 @@
         <div class="story-toolbar">
           <div>
             <div class="panel-head" style="margin-bottom: 4px;">
-              {% if active_feed_id %}
-                <div class="panel-kicker">{{ river_label }}</div>
+              {% if active_feed_id and selected %}
+                <div class="panel-kicker">{{ selected.feed_name }}</div>
+              {% elseif active_feed_id %}
+                <div class="panel-kicker">Selected site</div>
               {% else %}
-                <div class="panel-kicker">River</div>
+                <div class="panel-kicker">All stories</div>
               {% endif %}
             </div>
-            <strong>{% if active_feed_id and selected %}{{ selected.feed_name }}{% elseif active_feed_id %}Selected site{% else %}All stories{% endif %}</strong>
+            <strong>{% if active_feed_id %}Stories{% else %}All stories{% endif %}</strong>
           </div>
           <div class="actions-row">
             <form method="post" action="{{ base_path }}/articles/archive-all">
@@ -807,8 +809,7 @@
                 <div class="column-heading">
                   <div>
                     <span class="eyebrow">Publish</span>
-                    <h2 class="column-heading__title" style="margin-top: 2px;">Queue this story</h2>
-                    <div class="column-heading__meta">{{ selected.feed_name }}</div>
+                    <h2 class="column-heading__title" style="margin-top: 2px;">{{ selected.title }}</h2>
                   </div>
                 </div>
                 <form method="post" action="{{ base_path }}/posts" class="form-stack">
