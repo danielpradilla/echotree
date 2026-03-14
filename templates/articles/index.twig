@@ -835,14 +835,14 @@
           var target = toggle.getAttribute('data-toggle-target');
           var panel = target ? panels[target] : null;
           if (!panel) return;
-          if (window.innerWidth <= 900) {
-            var collapsed = panel.classList.contains('is-collapsed');
-            toggle.style.display = 'inline-flex';
-            toggle.textContent = collapsed
-              ? 'Show ' + (target === 'nav' ? 'sites' : 'stories')
-              : 'Hide ' + (target === 'nav' ? 'sites' : 'stories');
-          } else {
-            toggle.style.display = 'none';
+          var collapsed = window.innerWidth <= 900
+            ? panel.classList.contains('is-collapsed')
+            : shell && shell.classList.contains(target === 'nav' ? 'is-nav-collapsed' : 'is-stories-collapsed');
+          toggle.style.display = 'inline-flex';
+          toggle.textContent = collapsed
+            ? 'Show ' + (target === 'nav' ? 'sites' : 'stories')
+            : 'Hide ' + (target === 'nav' ? 'sites' : 'stories');
+          if (window.innerWidth > 900) {
             panel.classList.remove('is-collapsed');
           }
         });
@@ -853,7 +853,12 @@
           var target = toggle.getAttribute('data-toggle-target');
           var panel = target ? panels[target] : null;
           if (!panel) return;
-          panel.classList.toggle('is-collapsed');
+          if (window.innerWidth <= 900) {
+            panel.classList.toggle('is-collapsed');
+          } else if (shell) {
+            var collapsedClass = target === 'nav' ? 'is-nav-collapsed' : 'is-stories-collapsed';
+            shell.classList.toggle(collapsedClass);
+          }
           applyState();
         });
       });
