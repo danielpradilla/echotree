@@ -664,7 +664,7 @@
         {% endif %}
       </div>
 
-      <div class="reader-panel reader-panel--main">
+      <div class="reader-panel reader-panel--main" id="reader-main">
       <div class="reader-viewer">
         {% if selected %}
           {% if status == 'shared' %}
@@ -860,6 +860,17 @@
 
       window.addEventListener('resize', applyState);
       applyState();
+    })();
+
+    (function () {
+      var mainPanel = document.getElementById('reader-main');
+      var hasSelected = {{ selected ? 'true' : 'false' }};
+      if (!mainPanel || !hasSelected) return;
+      if (window.innerWidth > 900) return;
+
+      window.requestAnimationFrame(function () {
+        mainPanel.scrollIntoView({ block: 'start', behavior: 'auto' });
+      });
     })();
 
     (function () {
