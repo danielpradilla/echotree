@@ -35,28 +35,38 @@
       white-space: nowrap;
     }
     .feeds-table__actions {
-      width: 1%;
-      white-space: nowrap;
+      width: 220px;
     }
     .feeds-table__actions-row {
-      display: inline-flex;
-      align-items: center;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
       gap: 6px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
     }
     .feeds-table__actions-row a,
     .feeds-table__actions-row button {
       font-size: 12px;
       line-height: 1.1;
     }
+    .feeds-table__actions-row a {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 0;
+    }
     .feeds-table__actions-row button {
+      width: 100%;
       padding: 6px 8px;
       border-radius: 8px;
+    }
+    .feeds-table__actions-row form {
+      width: 100%;
     }
     @media (max-width: 900px) {
       .feeds-table__url {
         max-width: 220px;
+      }
+      .feeds-table__actions {
+        width: 180px;
       }
     }
   </style>
@@ -68,7 +78,7 @@
     <div class="actions-row">
       <form method="post" action="{{ base_path }}/feeds/fetch-all" class="inline-form">
         <input type="hidden" name="_csrf" value="{{ csrf }}" />
-        <button type="submit" class="button-secondary">Fetch all</button>
+        <button type="submit">Fetch all</button>
       </form>
       <a href="{{ base_path }}/feeds/new">Add feed</a>
     </div>
