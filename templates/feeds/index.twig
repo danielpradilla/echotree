@@ -16,7 +16,7 @@
     </div>
   {% elseif error == 'upload_failed' %}
     <div class="card" style="margin-bottom: 18px;">
-      <p class="status-pill">Upload failed. Please choose an OPML file exported from NewsBlur.</p>
+      <p class="status-pill">Upload failed. Please choose a valid OPML export file.</p>
     </div>
   {% elseif error == 'invalid_opml' %}
     <div class="card" style="margin-bottom: 18px;">
@@ -26,8 +26,8 @@
   <div class="card" style="margin-bottom: 18px;">
     <div class="page-header" style="margin-bottom: 14px;">
       <div>
-        <h2 style="margin-bottom: 8px;">Import from NewsBlur</h2>
-        <p class="muted" style="margin-bottom: 0;">Export your sites from NewsBlur as OPML, then upload the file here.</p>
+        <h2 style="margin-bottom: 8px;">Import from OPML</h2>
+        <p class="muted" style="margin-bottom: 0;">Upload an OPML export file to import your sites here.</p>
       </div>
     </div>
     <form method="post" action="{{ base_path }}/feeds/import" enctype="multipart/form-data" class="form-stack">
