@@ -184,12 +184,6 @@
         gap: 8px;
         flex-wrap: wrap;
       }
-      .topbar__actions {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-      }
       .nav-toggle {
         display: none;
         align-items: center;
@@ -228,17 +222,8 @@
         background: rgba(255, 250, 243, 0.8);
         border-color: var(--line-soft);
       }
-      .logout-link {
-        text-decoration: none;
-        padding: 8px 14px;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        color: var(--ink);
-        background: rgba(255, 255, 255, 0.84);
-      }
-      .logout-link:hover {
-        border-color: var(--accent);
-        background: rgba(246, 251, 243, 0.92);
+      .nav__spacer {
+        flex: 1 1 auto;
       }
       .page-header {
         display: flex;
@@ -368,10 +353,6 @@
         .nav-toggle {
           display: inline-flex;
         }
-        .topbar__actions {
-          width: 100%;
-          justify-content: space-between;
-        }
         .nav {
           display: none;
           width: 100%;
@@ -406,20 +387,19 @@
             {% endif %}
             <span class="muted">/ {{ title }}</span>
           </div>
-          <div class="topbar__actions">
-            <a class="logout-link" href="{{ base_path }}/logout">Logout</a>
-            <button type="button" class="nav-toggle button-secondary" aria-expanded="false" aria-controls="site-nav" aria-label="Toggle navigation">
-              <span class="nav-toggle__icon"></span>
-            </button>
-            <nav class="nav" id="site-nav">
-              <a href="{{ base_path ~ '/' }}">Home</a>
-              <a href="{{ base_path }}/feeds">Feeds</a>
-              <a href="{{ base_path }}/articles">Reader</a>
-              <a href="{{ base_path }}/share">Share</a>
-              <a href="{{ base_path }}/scheduled">Scheduled</a>
-              <a href="{{ base_path }}/accounts">Accounts</a>
-            </nav>
-          </div>
+          <button type="button" class="nav-toggle button-secondary" aria-expanded="false" aria-controls="site-nav" aria-label="Toggle navigation">
+            <span class="nav-toggle__icon"></span>
+          </button>
+          <nav class="nav" id="site-nav">
+            <a href="{{ base_path ~ '/' }}">Home</a>
+            <a href="{{ base_path }}/feeds">Feeds</a>
+            <a href="{{ base_path }}/articles">Reader</a>
+            <a href="{{ base_path }}/share">Share</a>
+            <a href="{{ base_path }}/scheduled">Scheduled</a>
+            <a href="{{ base_path }}/accounts">Accounts</a>
+            <span class="nav__spacer" aria-hidden="true"></span>
+            <a href="{{ base_path }}/logout">Logout</a>
+          </nav>
         </div>
       </header>
     {% endif %}
