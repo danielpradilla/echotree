@@ -26,6 +26,7 @@ function register_core_routes(App $app): void
                     'title' => 'Login',
                     'error' => 'Too many failed attempts. Please wait and try again.',
                     'csrf' => csrf_token(),
+                    'hide_app_chrome' => true,
                 ]);
             }
 
@@ -43,12 +44,14 @@ function register_core_routes(App $app): void
                 'title' => 'Login',
                 'error' => 'Invalid username or password.',
                 'csrf' => csrf_token(),
+                'hide_app_chrome' => true,
             ]);
         }
 
         return $view->render($response, 'login.twig', [
             'title' => 'Login',
             'csrf' => csrf_token(),
+            'hide_app_chrome' => true,
         ]);
     });
 

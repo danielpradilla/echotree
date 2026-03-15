@@ -32,6 +32,9 @@
         background-color: var(--bg);
         color: var(--ink);
       }
+      body.layout--bare {
+        min-height: 100vh;
+      }
       h1, h2, h3, h4, h5, h6, p {
         margin-top: 0;
       }
@@ -54,6 +57,15 @@
         max-width: 1560px;
         margin: 12px auto 40px;
         padding: 0 28px;
+      }
+      .main--bare {
+        max-width: 680px;
+        min-height: 100vh;
+        margin: 0 auto;
+        padding: 40px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
       .card {
         background: var(--card);
@@ -172,6 +184,12 @@
         gap: 8px;
         flex-wrap: wrap;
       }
+      .topbar__actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
       .nav-toggle {
         display: none;
         align-items: center;
@@ -209,6 +227,18 @@
       .nav a:hover {
         background: rgba(255, 250, 243, 0.8);
         border-color: var(--line-soft);
+      }
+      .logout-link {
+        text-decoration: none;
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.84);
+      }
+      .logout-link:hover {
+        border-color: var(--accent);
+        background: rgba(246, 251, 243, 0.92);
       }
       .page-header {
         display: flex;
@@ -338,6 +368,10 @@
         .nav-toggle {
           display: inline-flex;
         }
+        .topbar__actions {
+          width: 100%;
+          justify-content: space-between;
+        }
         .nav {
           display: none;
           width: 100%;
@@ -361,54 +395,60 @@
       }
     </style>
   </head>
-  <body>
-    <header>
-      <div class="topbar">
-        <div class="brand">
-          <strong class="brand__name">EchoTree</strong>
-          {% if app_commit %}
-            <span class="muted" style="font-size: 12px;">({{ app_commit }})</span>
-          {% endif %}
-          <span class="muted">/ {{ title }}</span>
+  <body class="{% if hide_app_chrome %}layout--bare{% endif %}">
+    {% if not hide_app_chrome %}
+      <header>
+        <div class="topbar">
+          <div class="brand">
+            <strong class="brand__name">EchoTree</strong>
+            {% if app_commit %}
+              <span class="muted" style="font-size: 12px;">({{ app_commit }})</span>
+            {% endif %}
+            <span class="muted">/ {{ title }}</span>
+          </div>
+          <div class="topbar__actions">
+            <a class="logout-link" href="{{ base_path }}/logout">Logout</a>
+            <button type="button" class="nav-toggle button-secondary" aria-expanded="false" aria-controls="site-nav" aria-label="Toggle navigation">
+              <span class="nav-toggle__icon"></span>
+            </button>
+            <nav class="nav" id="site-nav">
+              <a href="{{ base_path ~ '/' }}">Home</a>
+              <a href="{{ base_path }}/feeds">Feeds</a>
+              <a href="{{ base_path }}/articles">Reader</a>
+              <a href="{{ base_path }}/share">Share</a>
+              <a href="{{ base_path }}/scheduled">Scheduled</a>
+              <a href="{{ base_path }}/accounts">Accounts</a>
+            </nav>
+          </div>
         </div>
-        <button type="button" class="nav-toggle button-secondary" aria-expanded="false" aria-controls="site-nav" aria-label="Toggle navigation">
-          <span class="nav-toggle__icon"></span>
-        </button>
-        <nav class="nav" id="site-nav">
-          <a href="{{ base_path ~ '/' }}">Home</a>
-          <a href="{{ base_path }}/feeds">Feeds</a>
-          <a href="{{ base_path }}/articles">Reader</a>
-          <a href="{{ base_path }}/share">Share</a>
-          <a href="{{ base_path }}/scheduled">Scheduled</a>
-          <a href="{{ base_path }}/accounts">Accounts</a>
-          <a href="{{ base_path }}/logout">Logout</a>
-        </nav>
-      </div>
-    </header>
-    <main>
+      </header>
+    {% endif %}
+    <main class="{% if hide_app_chrome %}main--bare{% endif %}">
       {% block content %}{% endblock %}
     </main>
-    <script>
-      (function () {
-        var toggle = document.querySelector('.nav-toggle');
-        var nav = document.getElementById('site-nav');
-        if (!toggle || !nav) return;
+    {% if not hide_app_chrome %}
+      <script>
+        (function () {
+          var toggle = document.querySelector('.nav-toggle');
+          var nav = document.getElementById('site-nav');
+          if (!toggle || !nav) return;
 
-        function syncState() {
-          if (window.innerWidth > 900) {
-            nav.classList.remove('is-open');
-            toggle.setAttribute('aria-expanded', 'false');
+          function syncState() {
+            if (window.innerWidth > 900) {
+              nav.classList.remove('is-open');
+              toggle.setAttribute('aria-expanded', 'false');
+            }
           }
-        }
 
-        toggle.addEventListener('click', function () {
-          var isOpen = nav.classList.toggle('is-open');
-          toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-        });
+          toggle.addEventListener('click', function () {
+            var isOpen = nav.classList.toggle('is-open');
+            toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+          });
 
-        window.addEventListener('resize', syncState);
-        syncState();
-      })();
-    </script>
+          window.addEventListener('resize', syncState);
+          syncState();
+        })();
+      </script>
+    {% endif %}
   </body>
 </html>

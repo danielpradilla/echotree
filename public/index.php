@@ -35,6 +35,7 @@ $app = AppFactory::create();
 
 $twig = Twig::create(__DIR__ . '/../templates', [
     'cache' => false,
+    'use_yield' => true,
 ]);
 $basePath = $_SERVER['SCRIPT_NAME'] ?? '';
 $basePath = str_replace('/index.php', '', $basePath);
