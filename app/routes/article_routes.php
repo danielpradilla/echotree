@@ -65,6 +65,77 @@ function echotree_schedule_utc_to_display(string $utcValue): string
     return $dt->format('Y-m-d H:i');
 }
 
+function create_or_publish_history_post(
+    PDO $pdo,
+    int $articleId,
+    string $comment,
+    string $scheduledAt,
+    string $action,
+    array $accountIds
+): array {
+    $duplicatePostId = find_recent_duplicate_post($pdo, $articleId, $comment, $accountIds);
+    if ($duplicatePostId !== null) {
+        return ['status' => 'duplicate_ignored', 'post_details' => null];
+    }
+
+    $postId = create_scheduled_post($articleId, $comment, $scheduledAt, $accountIds);
+
+    if ($action === 'now') {
+        publish_post_now($postId);
+    }
+
+    if ($action !== 'now') {
+        return ['status' => 'scheduled', 'post_details' => null];
+    }
+
+    $statusRows = $pdo->prepare(
+        'SELECT status, COUNT(*) AS count FROM deliveries WHERE post_id = :id GROUP BY status'
+    );
+    $statusRows->execute([':id' => $postId]);
+    $counts = ['pending' => 0, 'publishing' => 0, 'failed' => 0, 'sent' => 0];
+    foreach ($statusRows->fetchAll() as $row) {
+        $counts[$row['status']] = (int) $row['count'];
+    }
+
+    $status = 'failed';
+    if ($counts['publishing'] > 0) {
+        $status = 'scheduled';
+    } elseif ($counts['sent'] > 0) {
+        $status = 'shared';
+    } elseif ($counts['pending'] > 0) {
+        $rateLimitMinutes = posting_rate_limit_minutes();
+
+        $rateLimitedStmt = $pdo->prepare(
+            'SELECT COUNT(*) '
+            . 'FROM deliveries d '
+            . 'WHERE d.post_id = :post_id '
+            . "AND d.status = 'pending' "
+            . 'AND EXISTS ('
+            . '  SELECT 1 FROM deliveries prev '
+            . "  WHERE prev.account_id = d.account_id AND prev.status = 'sent' "
+            . "  AND prev.sent_at >= datetime('now', :window)"
+            . ')'
+        );
+        $rateLimitedStmt->execute([
+            ':post_id' => $postId,
+            ':window' => '-' . $rateLimitMinutes . ' minutes',
+        ]);
+        $rateLimitedCount = (int) $rateLimitedStmt->fetchColumn();
+        $status = $rateLimitedCount > 0 ? 'rate_limited' : 'scheduled';
+    }
+
+    $detailStmt = $pdo->prepare(
+        'SELECT d.status, d.error, a.platform FROM deliveries d '
+        . 'JOIN accounts a ON a.id = d.account_id WHERE d.post_id = :id'
+    );
+    $detailStmt->execute([':id' => $postId]);
+
+    return [
+        'status' => $status,
+        'post_details' => $detailStmt->fetchAll(),
+    ];
+}
+
 function find_recent_duplicate_post(PDO $pdo, int $articleId, string $comment, array $accountIds, int $windowMinutes = 15): ?int
 {
     if ($articleId <= 0 || $comment === '' || count($accountIds) === 0) {
@@ -400,6 +471,115 @@ function register_article_routes(App $app): void
             'default_schedule_input' => echotree_schedule_default_input(),
             'schedule_timezone' => echotree_schedule_timezone_id(),
         ]);
+    });
+
+    $app->get('/history', function ($request, $response) {
+        $pdo = db_connection();
+        $entries = list_share_history($pdo);
+        foreach ($entries as &$entry) {
+            $entry['shared_at_local'] = echotree_schedule_utc_to_display((string) $entry['shared_at']);
+        }
+        unset($entry);
+
+        $queryParams = $request->getQueryParams();
+        $selectedId = isset($queryParams['selected']) ? (int) $queryParams['selected'] : 0;
+        if ($selectedId === 0 && count($entries) > 0) {
+            $selectedId = (int) $entries[0]['id'];
+        }
+
+        $selectedEntry = null;
+        foreach ($entries as $entry) {
+            if ((int) $entry['id'] === $selectedId) {
+                $selectedEntry = $entry;
+                break;
+            }
+        }
+
+        $accounts = list_active_accounts($pdo);
+        $postDetails = $_SESSION['last_post_details'] ?? null;
+        unset($_SESSION['last_post_details'], $_SESSION['last_post_status']);
+
+        $view = Twig::fromRequest($request);
+        return $view->render($response, 'history.twig', [
+            'title' => 'History',
+            'entries' => $entries,
+            'selected' => $selectedEntry,
+            'accounts' => $accounts,
+            'status' => $queryParams['status'] ?? null,
+            'error' => $queryParams['error'] ?? null,
+            'post_details' => $postDetails,
+            'csrf' => csrf_token(),
+            'submit_token' => create_post_submit_token(),
+            'base_path' => base_path($request),
+            'default_schedule_input' => echotree_schedule_default_input(),
+            'schedule_timezone' => echotree_schedule_timezone_id(),
+        ]);
+    });
+
+    $app->post('/history/{id}/repost', function ($request, $response, $args) {
+        $historyId = (int) ($args['id'] ?? 0);
+        $data = (array) $request->getParsedBody();
+        $comment = trim((string) ($data['comment'] ?? ''));
+        $scheduledAt = trim((string) ($data['scheduled_at'] ?? ''));
+        $action = trim((string) ($data['action'] ?? 'schedule'));
+        $submitToken = trim((string) ($data['_submit_token'] ?? ''));
+        $accountIds = array_map('intval', (array) ($data['account_ids'] ?? []));
+        $target = "/history?selected={$historyId}";
+        $sep = '&';
+
+        if (!consume_post_submit_token($submitToken)) {
+            return $response
+                ->withHeader('Location', $target . $sep . 'status=duplicate_ignored')
+                ->withStatus(302);
+        }
+
+        if ($historyId === 0 || $comment === '' || count($accountIds) === 0) {
+            return $response
+                ->withHeader('Location', $target . $sep . 'error=1')
+                ->withStatus(302);
+        }
+
+        if ($action === 'now') {
+            $scheduledAt = gmdate('Y-m-d H:i:s');
+        } else {
+            $parsedScheduleAt = echotree_schedule_input_to_utc($scheduledAt);
+            if ($parsedScheduleAt === null) {
+                return $response
+                    ->withHeader('Location', $target . $sep . 'error=1')
+                    ->withStatus(302);
+            }
+            $scheduledAt = $parsedScheduleAt;
+        }
+
+        $pdo = db_connection();
+        $entry = find_share_history_entry($pdo, $historyId);
+        if (!$entry) {
+            return $response
+                ->withHeader('Location', $target . $sep . 'status=failed')
+                ->withStatus(302);
+        }
+
+        $articleId = upsert_manual_article_from_url($pdo, (string) ($entry['url'] ?? ''));
+        if ($articleId === null) {
+            return $response
+                ->withHeader('Location', $target . $sep . 'status=failed')
+                ->withStatus(302);
+        }
+
+        try {
+            $result = create_or_publish_history_post($pdo, $articleId, $comment, $scheduledAt, $action, $accountIds);
+            $_SESSION['last_post_details'] = $result['post_details'];
+            $_SESSION['last_post_status'] = $result['status'];
+
+            return $response
+                ->withHeader('Location', $target . $sep . 'status=' . $result['status'])
+                ->withStatus(302);
+        } catch (Throwable $e) {
+            error_log('Failed reposting history entry: ' . $e->getMessage());
+            return $response
+                ->withHeader('Location', $target . $sep . 'status=failed')
+                ->withStatus(302);
+        }
     });
 
     $app->get('/scheduled', function ($request, $response) {

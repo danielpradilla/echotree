@@ -23,6 +23,7 @@ function db_connection(): PDO
     $pdo->exec('PRAGMA journal_mode = WAL');
     $pdo->exec('PRAGMA busy_timeout = 5000');
     auto_init_schema($pdo, $baseDir);
+    ensure_runtime_schema($pdo);
 
     return $pdo;
 }
@@ -45,4 +46,31 @@ function auto_init_schema(PDO $pdo, string $baseDir): void
     }
 
     $pdo->exec($schema);
+}
+
+function ensure_runtime_schema(PDO $pdo): void
+{
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS share_history ("
+        . "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        . "url TEXT NOT NULL, "
+        . "title TEXT NULL, "
+        . "comment TEXT NOT NULL, "
+        . "shared_at TEXT NOT NULL DEFAULT (datetime('now')), "
+        . "created_at TEXT NOT NULL DEFAULT (datetime('now')), "
+        . "status TEXT NOT NULL DEFAULT 'sent', "
+        . "platform TEXT NULL, "
+        . "account_id INTEGER NULL, "
+        . "account_display_name TEXT NULL, "
+        . "account_handle TEXT NULL, "
+        . "article_id INTEGER NULL, "
+        . "post_id INTEGER NULL, "
+        . "delivery_id INTEGER NULL, "
+        . "external_id TEXT NULL, "
+        . "error TEXT NULL"
+        . ")"
+    );
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_share_history_shared_at ON share_history(shared_at)');
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_share_history_url ON share_history(url)');
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_share_history_post_id ON share_history(post_id)');
 }

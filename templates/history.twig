@@ -1,0 +1,199 @@
+{% extends "layout.twig" %}
+
+{% block content %}
+  <style>
+    .history-page {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.95fr);
+      gap: 18px;
+      align-items: start;
+    }
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .history-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      padding: 16px 18px;
+      border: 1px solid var(--line-soft);
+      border-radius: 16px;
+      background: rgba(255, 253, 249, 0.84);
+      text-decoration: none;
+      color: inherit;
+      box-shadow: 0 10px 24px var(--shadow-soft);
+    }
+    .history-item.is-active {
+      border-color: rgba(63, 141, 121, 0.4);
+      background: rgba(246, 251, 243, 0.96);
+    }
+    .history-item__title {
+      margin: 0 0 8px;
+      font-size: 20px;
+      line-height: 1.2;
+    }
+    .history-item__meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .history-comment {
+      margin: 0;
+      color: var(--muted);
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .history-sidebar {
+      position: sticky;
+      top: 88px;
+    }
+    .history-url {
+      word-break: break-word;
+    }
+    @media (max-width: 980px) {
+      .history-page {
+        grid-template-columns: 1fr;
+      }
+      .history-sidebar {
+        position: static;
+      }
+    }
+  </style>
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">History</h1>
+      <p class="page-subtitle muted">Persistent log of successfully shared articles. Entries stay here even if the article inbox is cleaned.</p>
+    </div>
+  </div>
+
+  {% if status == 'shared' %}
+    <div class="card" style="margin-bottom: 14px;">
+      <p class="muted">Article shared.</p>
+    </div>
+  {% elseif status == 'duplicate_ignored' %}
+    <div class="card" style="margin-bottom: 14px;">
+      <p class="muted">Duplicate submit ignored.</p>
+    </div>
+  {% elseif status == 'rate_limited' %}
+    <div class="card" style="margin-bottom: 14px;">
+      <p class="muted">Article scheduled because of rate limiting.</p>
+    </div>
+  {% elseif status == 'scheduled' %}
+    <div class="card" style="margin-bottom: 14px;">
+      <p class="muted">Article scheduled.</p>
+    </div>
+  {% elseif status == 'failed' %}
+    <div class="card" style="margin-bottom: 14px;">
+      <p class="muted">Share failed. Check account settings.</p>
+    </div>
+  {% endif %}
+
+  {% if error %}
+    <div class="card" style="margin-bottom: 14px;">
+      <p class="status-pill">Please add a comment, schedule time, and at least one account</p>
+    </div>
+  {% endif %}
+
+  {% if post_details %}
+    <div class="card" style="margin-bottom: 14px;">
+      <p class="muted">Per network:</p>
+      <ul style="margin: 8px 0 0 16px;">
+        {% for row in post_details %}
+          <li class="muted">
+            {{ row.platform }} — {{ row.status }}
+            {% if row.status == 'failed' and row.error %}
+              ({{ row.error }})
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <div class="history-page">
+    <div class="history-list">
+      {% if entries|length == 0 %}
+        <div class="empty-state muted">No successful shares recorded yet.</div>
+      {% else %}
+        {% for entry in entries %}
+          <a
+            class="history-item{% if selected and selected.id == entry.id %} is-active{% endif %}"
+            href="{{ base_path }}/history?selected={{ entry.id }}"
+          >
+            <div>
+              <h2 class="history-item__title">{{ entry.title ?: entry.url }}</h2>
+              <div class="history-item__meta">
+                <span class="status-pill">{{ entry.platform ?: 'shared' }}</span>
+                <span class="muted">{{ entry.shared_at_local }}</span>
+                {% if entry.account_display_name %}
+                  <span class="muted">{{ entry.account_display_name }}{% if entry.account_handle %} ({{ entry.account_handle }}){% endif %}</span>
+                {% endif %}
+              </div>
+              <p class="history-comment">{{ entry.comment }}</p>
+            </div>
+            <div class="muted">Repost</div>
+          </a>
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    <div class="history-sidebar">
+      {% if selected %}
+        <div class="card">
+          <span class="eyebrow">Selected Share</span>
+          <h2 style="margin-bottom: 10px;">{{ selected.title ?: selected.url }}</h2>
+          <p class="muted history-url"><a href="{{ selected.url }}" target="_blank" rel="noopener">{{ selected.url }}</a></p>
+          <p class="muted" style="margin-bottom: 6px;">Originally shared on {{ selected.shared_at_local }}{% if selected.platform %} via {{ selected.platform }}{% endif %}.</p>
+          {% if selected.account_display_name %}
+            <p class="muted" style="margin-bottom: 16px;">Account: {{ selected.account_display_name }}{% if selected.account_handle %} ({{ selected.account_handle }}){% endif %}</p>
+          {% endif %}
+
+          <form method="post" action="{{ base_path }}/history/{{ selected.id }}/repost" class="form-stack">
+            <input type="hidden" name="_csrf" value="{{ csrf }}" />
+            <input type="hidden" name="_submit_token" value="{{ submit_token }}" />
+            <label>
+              Comment
+              <textarea name="comment" rows="5" style="width: 100%;">{{ selected.comment }}</textarea>
+            </label>
+            <label>
+              Schedule ({{ schedule_timezone }})
+              <input type="datetime-local" name="scheduled_at" value="{{ default_schedule_input }}" />
+            </label>
+            <fieldset>
+              <legend>Accounts</legend>
+              {% if accounts|length == 0 %}
+                <p class="muted">No active accounts yet.</p>
+              {% else %}
+                <div class="stack" style="gap: 10px;">
+                  {% for account in accounts %}
+                    <label class="checkbox-row">
+                      <input
+                        type="checkbox"
+                        name="account_ids[]"
+                        value="{{ account.id }}"
+                        {% if selected.account_id and selected.account_id == account.id %}checked{% endif %}
+                      />
+                      {{ account.platform }} · {{ account.display_name }} ({{ account.handle }})
+                    </label>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </fieldset>
+            <div class="actions-row">
+              <button type="submit" name="action" value="schedule">Schedule repost</button>
+              <button type="submit" name="action" value="now" class="button-secondary">Share now</button>
+            </div>
+          </form>
+        </div>
+      {% else %}
+        <div class="empty-state muted">Select a history entry to repost it.</div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

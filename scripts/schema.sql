@@ -63,6 +63,25 @@ CREATE TABLE IF NOT EXISTS deliveries (
     FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS share_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    url TEXT NOT NULL,
+    title TEXT NULL,
+    comment TEXT NOT NULL,
+    shared_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    status TEXT NOT NULL DEFAULT 'sent',
+    platform TEXT NULL,
+    account_id INTEGER NULL,
+    account_display_name TEXT NULL,
+    account_handle TEXT NULL,
+    article_id INTEGER NULL,
+    post_id INTEGER NULL,
+    delivery_id INTEGER NULL,
+    external_id TEXT NULL,
+    error TEXT NULL
+);
+
 CREATE TABLE IF NOT EXISTS remember_tokens (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -79,5 +98,8 @@ CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status);
 CREATE INDEX IF NOT EXISTS idx_posts_scheduled_at ON posts(scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_deliveries_status ON deliveries(status);
 CREATE INDEX IF NOT EXISTS idx_deliveries_account_id ON deliveries(account_id);
+CREATE INDEX IF NOT EXISTS idx_share_history_shared_at ON share_history(shared_at);
+CREATE INDEX IF NOT EXISTS idx_share_history_url ON share_history(url);
+CREATE INDEX IF NOT EXISTS idx_share_history_post_id ON share_history(post_id);
 CREATE INDEX IF NOT EXISTS idx_remember_tokens_user_id ON remember_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_remember_tokens_expires_at ON remember_tokens(expires_at);

@@ -172,3 +172,28 @@ function list_post_deliveries(PDO $pdo, int $postId): array
     $stmt->execute([':post_id' => $postId]);
     return $stmt->fetchAll();
 }
+
+function list_share_history(PDO $pdo): array
+{
+    $stmt = $pdo->query(
+        'SELECT id, url, title, comment, shared_at, created_at, status, platform, '
+        . 'account_id, account_display_name, account_handle, article_id, post_id, delivery_id, external_id, error '
+        . 'FROM share_history '
+        . "WHERE status = 'sent' "
+        . 'ORDER BY shared_at DESC, id DESC'
+    );
+
+    return $stmt->fetchAll();
+}
+
+function find_share_history_entry(PDO $pdo, int $historyId): ?array
+{
+    $stmt = $pdo->prepare(
+        'SELECT id, url, title, comment, shared_at, created_at, status, platform, '
+        . 'account_id, account_display_name, account_handle, article_id, post_id, delivery_id, external_id, error '
+        . 'FROM share_history WHERE id = :id LIMIT 1'
+    );
+    $stmt->execute([':id' => $historyId]);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}

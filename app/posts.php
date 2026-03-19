@@ -7,6 +7,57 @@ require_once __DIR__ . '/crypto.php';
 require_once __DIR__ . '/adapters/AdapterFactory.php';
 require_once __DIR__ . '/publish_lock.php';
 
+function record_share_history(
+    PDO $pdo,
+    int $articleId,
+    int $postId,
+    int $deliveryId,
+    string $url,
+    string $title,
+    string $comment,
+    string $platform,
+    int $accountId,
+    string $accountDisplayName,
+    string $accountHandle,
+    string $externalId
+): void {
+    $insert = $pdo->prepare(
+        'INSERT INTO share_history '
+        . '(url, title, comment, shared_at, status, platform, account_id, account_display_name, account_handle, article_id, post_id, delivery_id, external_id) '
+        . 'VALUES (:url, :title, :comment, datetime(\'now\'), :status, :platform, :account_id, :account_display_name, :account_handle, :article_id, :post_id, :delivery_id, :external_id)'
+    );
+
+    run_sqlite_write_with_retry(static function () use (
+        $insert,
+        $url,
+        $title,
+        $comment,
+        $platform,
+        $accountId,
+        $accountDisplayName,
+        $accountHandle,
+        $articleId,
+        $postId,
+        $deliveryId,
+        $externalId
+    ): void {
+        $insert->execute([
+            ':url' => $url,
+            ':title' => $title !== '' ? $title : null,
+            ':comment' => $comment,
+            ':status' => 'sent',
+            ':platform' => $platform,
+            ':account_id' => $accountId,
+            ':account_display_name' => $accountDisplayName !== '' ? $accountDisplayName : null,
+            ':account_handle' => $accountHandle !== '' ? $accountHandle : null,
+            ':article_id' => $articleId > 0 ? $articleId : null,
+            ':post_id' => $postId > 0 ? $postId : null,
+            ':delivery_id' => $deliveryId > 0 ? $deliveryId : null,
+            ':external_id' => $externalId !== '' ? $externalId : null,
+        ]);
+    }, 'share_history_insert post=' . $postId . ' delivery=' . $deliveryId . ' platform=' . $platform);
+}
+
 function create_post_submit_token(): string
 {
     $tokens = (array) ($_SESSION['post_submit_tokens'] ?? []);
@@ -182,10 +233,11 @@ function process_post_deliveries(
     int $rateLimitMinutes,
     ?callable $log
 ): void {
-    $articleStmt = $pdo->prepare('SELECT url FROM articles WHERE id = :id');
+    $articleStmt = $pdo->prepare('SELECT url, title FROM articles WHERE id = :id');
     $articleStmt->execute([':id' => $articleId]);
     $article = $articleStmt->fetch();
     $articleUrl = $article ? (string) $article['url'] : '';
+    $articleTitle = $article ? (string) ($article['title'] ?? '') : '';
 
     $deliveriesStmt = $pdo->prepare(
         'SELECT d.id, d.account_id, d.status, a.platform, a.display_name, a.handle, a.oauth_token_encrypted '
@@ -255,6 +307,21 @@ function process_post_deliveries(
                     ':id' => $deliveryId,
                 ]);
             }, 'delivery_sent post=' . $postId . ' delivery=' . $deliveryId . ' platform=' . $platform);
+
+            record_share_history(
+                $pdo,
+                $articleId,
+                $postId,
+                $deliveryId,
+                $articleUrl,
+                $articleTitle,
+                $comment,
+                $platform,
+                $accountId,
+                (string) ($delivery['display_name'] ?? ''),
+                (string) ($delivery['handle'] ?? ''),
+                $externalId
+            );
 
             publish_log($log, "Sent: post {$postId} to {$platform}\n");
         } catch (Throwable $e) {
