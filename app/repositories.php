@@ -93,7 +93,11 @@ function list_articles_with_feed(PDO $pdo, ?int $feedId = null): array
 {
     if ($feedId) {
         $stmt = $pdo->prepare(
-            'SELECT a.*, f.name AS feed_name, f.url AS feed_url '
+            'SELECT a.id, a.feed_id, a.title, a.url, '
+            . 'substr(a.content_html, 1, 4096) AS content_html, '
+            . 'substr(a.content_text, 1, 4000) AS content_text, '
+            . 'a.summary, a.published_at, a.created_at, a.is_read, '
+            . 'f.name AS feed_name, f.url AS feed_url '
             . 'FROM articles a '
             . 'JOIN feeds f ON f.id = a.feed_id '
             . 'WHERE a.feed_id = :feed_id AND f.url != :manual_url '
@@ -105,7 +109,11 @@ function list_articles_with_feed(PDO $pdo, ?int $feedId = null): array
     }
 
     $stmt = $pdo->prepare(
-        'SELECT a.*, f.name AS feed_name, f.url AS feed_url '
+        'SELECT a.id, a.feed_id, a.title, a.url, '
+        . 'substr(a.content_html, 1, 4096) AS content_html, '
+        . 'substr(a.content_text, 1, 4000) AS content_text, '
+        . 'a.summary, a.published_at, a.created_at, a.is_read, '
+        . 'f.name AS feed_name, f.url AS feed_url '
         . 'FROM articles a '
         . 'JOIN feeds f ON f.id = a.feed_id '
         . 'WHERE f.url != :manual_url '
