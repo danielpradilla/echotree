@@ -16,6 +16,19 @@
       font-size: 13px;
       line-height: 1.2;
     }
+    .feed-name {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .stale-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: #cc3d2b;
+      box-shadow: 0 0 0 3px rgba(204, 61, 43, 0.14);
+      flex: 0 0 auto;
+    }
     .feeds-table__url {
       max-width: 0;
       width: 100%;
@@ -99,9 +112,17 @@
     <div class="card" style="margin-bottom: 18px;">
       <p class="muted" style="margin-bottom: 0;">Feed refresh started in the background. It runs as a lightweight batch, so click again later if you want to continue through the rest of the list.</p>
     </div>
+  {% elseif status == 'fetch_complete' %}
+    <div class="card" style="margin-bottom: 18px;">
+      <p class="muted" style="margin-bottom: 0;">Feed refreshed successfully.</p>
+    </div>
+  {% elseif status == 'fetch_checked' %}
+    <div class="card" style="margin-bottom: 18px;">
+      <p class="muted" style="margin-bottom: 0;">Feed checked. No new items were imported.</p>
+    </div>
   {% elseif status == 'fetch_failed' %}
     <div class="card" style="margin-bottom: 18px;">
-      <p class="status-pill">Could not start the background feed fetcher on this server.</p>
+      <p class="status-pill">Feed fetch failed.</p>
     </div>
   {% elseif error == 'upload_failed' %}
     <div class="card" style="margin-bottom: 18px;">
@@ -148,7 +169,14 @@
           <tbody>
             {% for feed in feeds %}
               <tr>
-                <td class="feeds-table__name"><strong>{{ feed.name }}</strong></td>
+                <td class="feeds-table__name">
+                  <span class="feed-name">
+                    <strong>{{ feed.name }}</strong>
+                    {% if feed.is_stale %}
+                      <span class="stale-dot" title="This feed has not been fetched in more than 6 months." aria-label="Stale feed"></span>
+                    {% endif %}
+                  </span>
+                </td>
                 <td class="feeds-table__url">
                   <a href="{{ feed.url }}" target="_blank" rel="noopener">{{ feed.url }}</a>
                 </td>

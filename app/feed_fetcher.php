@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/article_extractor.php';
 
-function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): void
+function update_feed_last_fetched_at(PDO $pdo, int $feedId): void
+{
+    $update = $pdo->prepare("UPDATE feeds SET last_fetched_at = datetime('now') WHERE id = :id");
+    $update->execute([':id' => $feedId]);
+}
+
+function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): array
 {
     $refresh = (bool) ($options['refresh'] ?? false);
     $feedId = isset($options['feed_id']) ? (int) $options['feed_id'] : null;
@@ -20,12 +26,24 @@ function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): void
 
     $pdo->exec('PRAGMA foreign_keys = ON');
 
+    $report = [
+        'summary' => [
+            'checked' => 0,
+            'added' => 0,
+            'refreshed' => 0,
+            'skipped_existing' => 0,
+            'empty' => 0,
+            'failed' => 0,
+        ],
+        'feeds' => [],
+    ];
+
     if ($feedId) {
-        $stmt = $pdo->prepare('SELECT id, name, url FROM feeds WHERE is_active = 1 AND id = :id');
+        $stmt = $pdo->prepare('SELECT id, name, url, is_active FROM feeds WHERE id = :id');
         $stmt->execute([':id' => $feedId]);
         $feeds = $stmt->fetchAll();
     } else {
-        $query = 'SELECT id, name, url FROM feeds WHERE is_active = 1 '
+        $query = 'SELECT id, name, url, is_active FROM feeds WHERE is_active = 1 '
             . 'ORDER BY CASE WHEN last_fetched_at IS NULL THEN 0 ELSE 1 END, last_fetched_at ASC, id ASC';
         if ($maxFeeds !== null) {
             $query .= ' LIMIT ' . (int) $maxFeeds;
@@ -37,13 +55,21 @@ function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): void
         if ($log) {
             $log("No active feeds.\n");
         }
-        return;
+        return $report;
     }
 
     foreach ($feeds as $feed) {
         $feedId = (int) $feed['id'];
         $feedUrl = (string) $feed['url'];
         $feedName = (string) $feed['name'];
+        $feedReport = [
+            'feed_id' => $feedId,
+            'feed_name' => $feedName,
+            'status' => 'checked',
+            'added' => 0,
+            'refreshed' => 0,
+            'skipped_existing' => 0,
+        ];
 
         if ($log) {
             $log("Fetching: {$feedName} ({$feedUrl})\n");
@@ -55,6 +81,9 @@ function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): void
         $sp->set_timeout(15);
 
         if (!$sp->init()) {
+            $feedReport['status'] = 'parse_failed';
+            $report['summary']['failed']++;
+            $report['feeds'][] = $feedReport;
             if ($log) {
                 $log("  Failed to parse feed: {$feedUrl}\n");
             }
@@ -63,6 +92,11 @@ function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): void
 
         $items = $sp->get_items();
         if (!$items) {
+            update_feed_last_fetched_at($pdo, $feedId);
+            $feedReport['status'] = 'empty';
+            $report['summary']['checked']++;
+            $report['summary']['empty']++;
+            $report['feeds'][] = $feedReport;
             if ($log) {
                 $log("  No items.\n");
             }
@@ -92,6 +126,8 @@ function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): void
             if ($row) {
                 $existingId = (int) $row['id'];
                 if (!$refresh) {
+                    $feedReport['skipped_existing']++;
+                    $report['summary']['skipped_existing']++;
                     continue;
                 }
             }
@@ -125,6 +161,8 @@ function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): void
                     ':published_at' => $publishedAt,
                     ':id' => $existingId,
                 ]);
+                $feedReport['refreshed']++;
+                $report['summary']['refreshed']++;
                 if ($log) {
                     $log("  Refreshed: {$title}\n");
                 }
@@ -142,6 +180,8 @@ function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): void
                     ':summary' => null,
                     ':published_at' => $publishedAt,
                 ]);
+                $feedReport['added']++;
+                $report['summary']['added']++;
 
                 if ($log) {
                     $log("  Added: {$title}\n");
@@ -151,7 +191,15 @@ function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): void
             $count++;
         }
 
-        $update = $pdo->prepare("UPDATE feeds SET last_fetched_at = datetime('now') WHERE id = :id");
-        $update->execute([':id' => $feedId]);
+        update_feed_last_fetched_at($pdo, $feedId);
+        $report['summary']['checked']++;
+        if ($feedReport['added'] > 0) {
+            $feedReport['status'] = 'added';
+        } elseif ($feedReport['refreshed'] > 0) {
+            $feedReport['status'] = 'refreshed';
+        }
+        $report['feeds'][] = $feedReport;
     }
+
+    return $report;
 }

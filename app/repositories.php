@@ -35,6 +35,22 @@ function accent_color_for_host(string $host): string
     return sprintf('hsl(%d 55%% 48%%)', $hue);
 }
 
+function is_feed_stale(?string $lastFetchedAt, int $months = 6): bool
+{
+    $lastFetchedAt = trim((string) $lastFetchedAt);
+    if ($lastFetchedAt === '') {
+        return false;
+    }
+
+    try {
+        $lastFetch = new DateTimeImmutable($lastFetchedAt, new DateTimeZone('UTC'));
+        $threshold = (new DateTimeImmutable('now', new DateTimeZone('UTC')))->modify('-' . $months . ' months');
+        return $lastFetch < $threshold;
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
 function extract_first_image_url(string $html): ?string
 {
     if (trim($html) === '') {
@@ -85,6 +101,7 @@ function list_feed_navigation(PDO $pdo): array
         $row['host'] = $host;
         $row['favicon_url'] = favicon_url_for_host($host);
         $row['accent_color'] = accent_color_for_host($host);
+        $row['is_stale'] = is_feed_stale((string) ($row['last_fetched_at'] ?? ''));
         return $row;
     }, $stmt->fetchAll());
 }

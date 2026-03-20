@@ -15,12 +15,13 @@
       <input type="hidden" name="_csrf" value="{{ csrf }}" />
       <label>
         Name
-        <input type="text" name="name" value="{{ feed.name }}" required />
+        <input id="feed-name" type="text" name="name" value="{{ feed.name }}" placeholder="Suggested from the feed URL if available" />
       </label>
       <label>
         URL
-        <input type="url" name="url" value="{{ feed.url }}" required />
+        <input id="feed-url" type="url" name="url" value="{{ feed.url }}" required />
       </label>
+      <div class="muted" id="feed-title-status" style="font-size: 12px; min-height: 18px;"></div>
       <label class="checkbox-row">
         <input type="checkbox" name="is_active" {% if feed.is_active %}checked{% endif %} />
         Active
@@ -31,4 +32,60 @@
       </div>
     </form>
   </div>
+  <script>
+    (function () {
+      var urlInput = document.getElementById('feed-url');
+      var nameInput = document.getElementById('feed-name');
+      var statusEl = document.getElementById('feed-title-status');
+      if (!urlInput || !nameInput) return;
+
+      var lastSuggestedTitle = nameInput.value.trim();
+      var userEditedName = nameInput.value.trim() !== '';
+
+      function setStatus(message) {
+        if (statusEl) statusEl.textContent = message;
+      }
+
+      nameInput.addEventListener('input', function () {
+        var current = nameInput.value.trim();
+        userEditedName = current !== '' && current !== lastSuggestedTitle;
+      });
+
+      function maybeSuggestTitle() {
+        var url = urlInput.value.trim();
+        if (!url) {
+          setStatus('');
+          return;
+        }
+
+        setStatus('Looking up feed title...');
+        fetch('{{ base_path }}/feeds/title-suggest?url=' + encodeURIComponent(url), {
+          headers: { 'Accept': 'application/json' }
+        })
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            if (!data || !data.ok || !data.title) {
+              setStatus('');
+              return;
+            }
+
+            lastSuggestedTitle = data.title;
+            if (!userEditedName || nameInput.value.trim() === '') {
+              nameInput.value = data.title;
+              userEditedName = false;
+            }
+            setStatus('Suggested title loaded from the feed.');
+          })
+          .catch(function () {
+            setStatus('');
+          });
+      }
+
+      urlInput.addEventListener('blur', maybeSuggestTitle);
+
+      if (urlInput.value.trim() !== '' && nameInput.value.trim() === '') {
+        maybeSuggestTitle();
+      }
+    })();
+  </script>
 {% endblock %}

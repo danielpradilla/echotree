@@ -5,6 +5,26 @@ declare(strict_types=1);
 use Slim\App;
 use Slim\Views\Twig;
 
+function suggest_feed_title_from_url(string $feedUrl): ?string
+{
+    $feedUrl = trim($feedUrl);
+    if ($feedUrl === '' || !filter_var($feedUrl, FILTER_VALIDATE_URL)) {
+        return null;
+    }
+
+    $sp = new SimplePie();
+    $sp->set_feed_url($feedUrl);
+    $sp->enable_cache(false);
+    $sp->set_timeout(10);
+
+    if (!$sp->init()) {
+        return null;
+    }
+
+    $title = trim((string) $sp->get_title());
+    return $title !== '' ? $title : null;
+}
+
 function launch_feed_fetcher_in_background(): bool
 {
     $baseDir = dirname(__DIR__, 2);
@@ -137,10 +157,29 @@ function import_opml_feeds(PDO $pdo, array $feeds): array
 
 function register_feed_routes(App $app): void
 {
+    $resolveRedirectTarget = static function ($request, string $fallback, string $status = ''): string {
+        $data = (array) $request->getParsedBody();
+        $target = trim((string) ($data['return_to'] ?? ''));
+        if ($target === '') {
+            $target = url_for($request, $fallback);
+        }
+
+        if ($status === '') {
+            return $target;
+        }
+
+        $sep = str_contains($target, '?') ? '&' : '?';
+        return $target . $sep . 'status=' . rawurlencode($status);
+    };
+
     $app->get('/feeds', function ($request, $response) {
         $pdo = db_connection();
         $stmt = $pdo->query('SELECT * FROM feeds ORDER BY name ASC');
         $feeds = $stmt->fetchAll();
+        $feeds = array_map(static function (array $feed): array {
+            $feed['is_stale'] = is_feed_stale((string) ($feed['last_fetched_at'] ?? ''));
+            return $feed;
+        }, $feeds);
 
         $view = Twig::fromRequest($request);
         return $view->render($response, 'feeds/index.twig', [
@@ -153,6 +192,19 @@ function register_feed_routes(App $app): void
             'skipped' => (int) ($request->getQueryParams()['skipped'] ?? 0),
             'error' => (string) ($request->getQueryParams()['error'] ?? ''),
         ]);
+    });
+
+    $app->get('/feeds/title-suggest', function ($request, $response) {
+        $url = trim((string) ($request->getQueryParams()['url'] ?? ''));
+        $title = suggest_feed_title_from_url($url);
+
+        $payload = [
+            'ok' => $title !== null,
+            'title' => $title,
+        ];
+
+        $response->getBody()->write(json_encode($payload));
+        return $response->withHeader('Content-Type', 'application/json');
     });
 
     $app->post('/feeds/import', function ($request, $response) {
@@ -186,11 +238,12 @@ function register_feed_routes(App $app): void
             ->withStatus(302);
     });
 
-    $app->post('/feeds/fetch-all', function ($request, $response) {
+    $app->post('/feeds/fetch-all', function ($request, $response) use ($resolveRedirectTarget) {
         $status = launch_feed_fetcher_in_background() ? 'fetch_started' : 'fetch_failed';
+        $target = $resolveRedirectTarget($request, '/feeds', $status);
 
         return $response
-            ->withHeader('Location', url_for($request, '/feeds?status=' . $status))
+            ->withHeader('Location', $target)
             ->withStatus(302);
     });
 
@@ -203,10 +256,10 @@ function register_feed_routes(App $app): void
             $url = trim((string) ($data['url'] ?? ''));
             $isActive = isset($data['is_active']) ? 1 : 0;
 
-            if ($name === '' || $url === '') {
+            if ($url === '') {
                 return $view->render($response, 'feeds/form.twig', [
                     'title' => 'New Feed',
-                    'error' => 'Name and URL are required.',
+                    'error' => 'URL is required.',
                     'feed' => ['name' => $name, 'url' => $url, 'is_active' => $isActive],
                     'action' => '/feeds/new',
                     'csrf' => csrf_token(),
@@ -223,6 +276,10 @@ function register_feed_routes(App $app): void
                     'csrf' => csrf_token(),
                     'base_path' => base_path($request),
                 ]);
+            }
+
+            if ($name === '') {
+                $name = suggest_feed_title_from_url($url) ?? $url;
             }
 
             $pdo = db_connection();
@@ -269,13 +326,13 @@ function register_feed_routes(App $app): void
             $url = trim((string) ($data['url'] ?? ''));
             $isActive = isset($data['is_active']) ? 1 : 0;
 
-            if ($name === '' || $url === '') {
+            if ($url === '') {
                 $feed['name'] = $name;
                 $feed['url'] = $url;
                 $feed['is_active'] = $isActive;
                 return $view->render($response, 'feeds/form.twig', [
                     'title' => 'Edit Feed',
-                    'error' => 'Name and URL are required.',
+                    'error' => 'URL is required.',
                     'feed' => $feed,
                     'action' => "/feeds/{$feedId}/edit",
                     'csrf' => csrf_token(),
@@ -295,6 +352,10 @@ function register_feed_routes(App $app): void
                     'csrf' => csrf_token(),
                     'base_path' => base_path($request),
                 ]);
+            }
+
+            if ($name === '') {
+                $name = suggest_feed_title_from_url($url) ?? $url;
             }
 
             $update = $pdo->prepare(
@@ -350,18 +411,30 @@ function register_feed_routes(App $app): void
             ->withStatus(302);
     });
 
-    $app->post('/feeds/{id}/fetch', function ($request, $response, $args) {
+    $app->post('/feeds/{id}/fetch', function ($request, $response, $args) use ($resolveRedirectTarget) {
         $feedId = (int) ($args['id'] ?? 0);
+        $status = 'fetch_failed';
         if ($feedId > 0) {
             $pdo = db_connection();
-            fetch_feeds($pdo, [
+            $result = fetch_feeds($pdo, [
                 'refresh' => true,
                 'feed_id' => $feedId,
             ]);
+            $feedResult = $result['feeds'][0] ?? null;
+            if ($feedResult) {
+                $feedStatus = (string) ($feedResult['status'] ?? '');
+                if (in_array($feedStatus, ['added', 'refreshed'], true)) {
+                    $status = 'fetch_complete';
+                } elseif (in_array($feedStatus, ['checked', 'empty'], true)) {
+                    $status = 'fetch_checked';
+                }
+            }
         }
 
+        $target = $resolveRedirectTarget($request, '/feeds', $status);
+
         return $response
-            ->withHeader('Location', url_for($request, '/feeds'))
+            ->withHeader('Location', $target)
             ->withStatus(302);
     });
 }

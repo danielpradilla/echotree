@@ -318,6 +318,12 @@ function register_article_routes(App $app): void
         $postDetails = $_SESSION['last_post_details'] ?? null;
         unset($_SESSION['last_post_details'], $_SESSION['last_post_status']);
 
+        $currentReaderUrl = (string) $request->getUri()->getPath();
+        $currentQuery = (string) $request->getUri()->getQuery();
+        if ($currentQuery !== '') {
+            $currentReaderUrl .= '?' . $currentQuery;
+        }
+
         $view = Twig::fromRequest($request);
         return $view->render($response, 'articles/index.twig', [
             'title' => 'Reader',
@@ -335,6 +341,7 @@ function register_article_routes(App $app): void
             'csrf' => csrf_token(),
             'submit_token' => create_post_submit_token(),
             'base_path' => base_path($request),
+            'current_reader_url' => $currentReaderUrl,
             'default_schedule_input' => echotree_schedule_default_input(),
             'schedule_timezone' => echotree_schedule_timezone_id(),
             'river_label' => $feedId ? 'Site' : 'All stories',

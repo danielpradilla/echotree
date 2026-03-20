@@ -259,6 +259,16 @@
       font-size: 13px;
       line-height: 1.2;
     }
+    .site-stale-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #cc3d2b;
+      box-shadow: 0 0 0 3px rgba(204, 61, 43, 0.14);
+      display: inline-block;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
     .site-link .muted {
       font-size: 11px !important;
       line-height: 1.25;
@@ -534,6 +544,14 @@
       {% set notice_message = 'Article scheduled.' %}
     {% elseif status == 'failed' %}
       {% set notice_message = 'Share failed. Check account settings.' %}
+    {% elseif status == 'fetch_started' %}
+      {% set notice_message = 'Feed refresh started in the background.' %}
+    {% elseif status == 'fetch_complete' %}
+      {% set notice_message = active_feed_id ? 'Feed refreshed.' : 'Feed refresh complete.' %}
+    {% elseif status == 'fetch_checked' %}
+      {% set notice_message = active_feed_id ? 'Feed checked. No new items were imported.' : 'Feed check complete. No new items were imported.' %}
+    {% elseif status == 'fetch_failed' %}
+      {% set notice_message = 'Could not start the feed refresh.' %}
     {% elseif error %}
       {% set notice_message = 'Please add a comment, schedule time, and at least one account.' %}
     {% endif %}
@@ -544,6 +562,18 @@
       <div class="reader-topbar__controls">
         <button type="button" class="inbox__toggle button-secondary" data-toggle-target="nav" style="display: none;">Show sites</button>
         <button type="button" class="inbox__toggle button-secondary" data-toggle-target="stories" style="display: none;">Show stories</button>
+        <form method="post" action="{{ base_path }}/feeds/fetch-all" class="inline-form">
+          <input type="hidden" name="_csrf" value="{{ csrf }}" />
+          <input type="hidden" name="return_to" value="{{ current_reader_url }}" />
+          <button type="submit" class="button-secondary">Fetch all</button>
+        </form>
+        {% if active_feed_id %}
+          <form method="post" action="{{ base_path }}/feeds/{{ active_feed_id }}/fetch" class="inline-form">
+            <input type="hidden" name="_csrf" value="{{ csrf }}" />
+            <input type="hidden" name="return_to" value="{{ current_reader_url }}" />
+            <button type="submit" class="button-secondary">Refresh feed</button>
+          </form>
+        {% endif %}
         {% set density_base = base_path ~ '/articles?' %}
         {% if active_feed_id %}
           {% set density_base = density_base ~ 'feed_id=' ~ active_feed_id ~ '&' %}
@@ -611,7 +641,12 @@
               {% endif %}
               <div>
                 <div class="site-title-row">
-                  <strong>{{ feed.name }}</strong>
+                  <strong>
+                    {{ feed.name }}
+                    {% if feed.is_stale %}
+                      <span class="site-stale-dot" title="This feed has not been fetched in more than 6 months." aria-label="Stale feed"></span>
+                    {% endif %}
+                  </strong>
                   <span class="count-pill">{{ feed.unread_count }}</span>
                 </div>
                 {% if not feed.is_active %}
@@ -643,6 +678,13 @@
               {% endif %}
               <button type="submit" class="button-secondary">Archive all</button>
             </form>
+            {% if active_feed_id %}
+              <form method="post" action="{{ base_path }}/feeds/{{ active_feed_id }}/fetch" class="inline-form">
+                <input type="hidden" name="_csrf" value="{{ csrf }}" />
+                <input type="hidden" name="return_to" value="{{ current_reader_url }}" />
+                <button type="submit" class="button-secondary">Refresh feed</button>
+              </form>
+            {% endif %}
           </div>
         </div>
 
