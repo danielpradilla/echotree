@@ -52,7 +52,7 @@ function register_oauth_routes(App $app): void
                 'code_verifier' => $codeVerifier,
             ]);
 
-            $scope = 'tweet.write users.read offline.access';
+            $scope = 'tweet.read tweet.write users.read offline.access';
             $url = 'https://twitter.com/i/oauth2/authorize'
                 . '?response_type=code'
                 . '&client_id=' . rawurlencode($clientId)

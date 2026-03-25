@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/AdapterInterface.php';
 
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
 
 class TwitterAdapter implements AdapterInterface
 {
@@ -26,15 +27,19 @@ class TwitterAdapter implements AdapterInterface
 
         $authHeader = $this->buildAuthHeader($token, 'POST', 'https://api.twitter.com/2/tweets');
 
-        $resp = $client->post('https://api.twitter.com/2/tweets', [
-            'headers' => [
-                'Authorization' => $authHeader,
-                'Accept' => 'application/json',
-            ],
-            'json' => [
-                'text' => $bodyText,
-            ],
-        ]);
+        try {
+            $resp = $client->post('https://api.twitter.com/2/tweets', [
+                'headers' => [
+                    'Authorization' => $authHeader,
+                    'Accept' => 'application/json',
+                ],
+                'json' => [
+                    'text' => $bodyText,
+                ],
+            ]);
+        } catch (RequestException $e) {
+            throw new RuntimeException($this->describeRequestException($e), 0, $e);
+        }
 
         $data = json_decode((string) $resp->getBody(), true);
         $id = $data['data']['id'] ?? '';
@@ -102,6 +107,79 @@ class TwitterAdapter implements AdapterInterface
         }
 
         return 'Bearer ' . $tokenPayload;
+    }
+
+    private function describeRequestException(RequestException $e): string
+    {
+        $response = $e->getResponse();
+        if ($response === null) {
+            return 'Twitter publish failed: ' . $e->getMessage();
+        }
+
+        $status = $response->getStatusCode();
+        $body = trim((string) $response->getBody());
+        $parts = ['Twitter publish failed'];
+
+        if ($status > 0) {
+            $parts[] = '(HTTP ' . $status . ')';
+        }
+
+        $details = $this->extractApiErrorDetails($body);
+        if ($details !== '') {
+            $parts[] = $details;
+        } elseif ($body !== '') {
+            $parts[] = $body;
+        }
+
+        if ($status === 403) {
+            $parts[] = 'Likely causes: token missing required scopes, X app lacks write permission, or app/project access level does not permit posting.';
+        }
+
+        return implode(': ', $parts);
+    }
+
+    private function extractApiErrorDetails(string $body): string
+    {
+        if ($body === '') {
+            return '';
+        }
+
+        $decoded = json_decode($body, true);
+        if (!is_array($decoded)) {
+            return '';
+        }
+
+        $detailParts = [];
+        $title = trim((string) ($decoded['title'] ?? ''));
+        $detail = trim((string) ($decoded['detail'] ?? ''));
+        $type = trim((string) ($decoded['type'] ?? ''));
+
+        if ($title !== '') {
+            $detailParts[] = $title;
+        }
+        if ($detail !== '') {
+            $detailParts[] = $detail;
+        }
+        if ($type !== '' && $type !== 'about:blank') {
+            $detailParts[] = 'type=' . $type;
+        }
+
+        $errors = $decoded['errors'] ?? null;
+        if (is_array($errors)) {
+            foreach ($errors as $error) {
+                if (!is_array($error)) {
+                    continue;
+                }
+                $message = trim((string) ($error['message'] ?? ''));
+                $code = isset($error['code']) ? (string) $error['code'] : '';
+                if ($message === '') {
+                    continue;
+                }
+                $detailParts[] = $code !== '' ? ($message . ' (code ' . $code . ')') : $message;
+            }
+        }
+
+        return implode('; ', array_values(array_unique($detailParts)));
     }
 
     private function oauth1Header(string $method, string $url, string $consumerKey, string $consumerSecret, string $token, string $tokenSecret): string
