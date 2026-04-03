@@ -5,6 +5,24 @@ declare(strict_types=1);
 use Slim\App;
 use Slim\Views\Twig;
 
+function find_feed_by_url(PDO $pdo, string $url, ?int $excludeId = null): ?array
+{
+    $sql = 'SELECT id, name, url FROM feeds WHERE url = :url';
+    $params = [':url' => $url];
+
+    if ($excludeId !== null) {
+        $sql .= ' AND id != :exclude_id';
+        $params[':exclude_id'] = $excludeId;
+    }
+
+    $sql .= ' LIMIT 1';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+
+    $feed = $stmt->fetch();
+    return $feed ?: null;
+}
+
 function suggest_feed_title_from_url(string $feedUrl): ?string
 {
     $feedUrl = trim($feedUrl);
@@ -283,6 +301,18 @@ function register_feed_routes(App $app): void
             }
 
             $pdo = db_connection();
+            $existingFeed = find_feed_by_url($pdo, $url);
+            if ($existingFeed !== null) {
+                return $view->render($response, 'feeds/form.twig', [
+                    'title' => 'New Feed',
+                    'error' => 'This feed already exists: ' . (string) ($existingFeed['name'] ?? $url),
+                    'feed' => ['name' => $name, 'url' => $url, 'is_active' => $isActive],
+                    'action' => '/feeds/new',
+                    'csrf' => csrf_token(),
+                    'base_path' => base_path($request),
+                ]);
+            }
+
             $stmt = $pdo->prepare(
                 'INSERT INTO feeds (name, url, is_active) VALUES (:name, :url, :is_active)'
             );
@@ -356,6 +386,21 @@ function register_feed_routes(App $app): void
 
             if ($name === '') {
                 $name = suggest_feed_title_from_url($url) ?? $url;
+            }
+
+            $existingFeed = find_feed_by_url($pdo, $url, $feedId);
+            if ($existingFeed !== null) {
+                $feed['name'] = $name;
+                $feed['url'] = $url;
+                $feed['is_active'] = $isActive;
+                return $view->render($response, 'feeds/form.twig', [
+                    'title' => 'Edit Feed',
+                    'error' => 'This feed already exists: ' . (string) ($existingFeed['name'] ?? $url),
+                    'feed' => $feed,
+                    'action' => "/feeds/{$feedId}/edit",
+                    'csrf' => csrf_token(),
+                    'base_path' => base_path($request),
+                ]);
             }
 
             $update = $pdo->prepare(
