@@ -2,6 +2,28 @@
 
 {% block content %}
   <style>
+    .feeds-bulk-card {
+      margin-bottom: 18px;
+    }
+    .feeds-bulk-form {
+      display: flex;
+      align-items: end;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .feeds-bulk-form label {
+      min-width: 220px;
+      flex: 1 1 280px;
+    }
+    .feeds-table__select {
+      width: 42px;
+      text-align: center;
+    }
+    .feeds-table__select input {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+    }
     .feeds-table th,
     .feeds-table td {
       padding: 10px 12px;
@@ -137,6 +159,10 @@
     <div class="card" style="margin-bottom: 18px;">
       <p class="status-pill">Feed fetch failed.</p>
     </div>
+  {% elseif status == 'bulk_folder_updated' %}
+    <div class="card" style="margin-bottom: 18px;">
+      <p class="muted" style="margin-bottom: 0;">Folder updated for the selected feeds.</p>
+    </div>
   {% elseif error == 'upload_failed' %}
     <div class="card" style="margin-bottom: 18px;">
       <p class="status-pill">Upload failed. Please choose a valid OPML export file.</p>
@@ -144,6 +170,14 @@
   {% elseif error == 'invalid_opml' %}
     <div class="card" style="margin-bottom: 18px;">
       <p class="status-pill">The file could not be parsed as a valid OPML feed export.</p>
+    </div>
+  {% elseif error == 'no_feeds_selected' %}
+    <div class="card" style="margin-bottom: 18px;">
+      <p class="status-pill">Select at least one feed first.</p>
+    </div>
+  {% elseif error == 'folder_required' %}
+    <div class="card" style="margin-bottom: 18px;">
+      <p class="status-pill">Enter a folder name, or choose Clear folder.</p>
     </div>
   {% endif %}
   <div class="card" style="margin-bottom: 18px;">
@@ -164,6 +198,23 @@
       </div>
     </form>
   </div>
+  <div class="card feeds-bulk-card">
+    <form method="post" action="{{ base_path }}/feeds/bulk-folder" class="feeds-bulk-form" id="feeds-bulk-form">
+      <input type="hidden" name="_csrf" value="{{ csrf }}" />
+      <label>
+        Folder
+        <input type="text" name="folder_name" placeholder="Move selected feeds into this folder" />
+      </label>
+      <label style="min-width: 180px; flex: 0 0 180px;">
+        Action
+        <select name="folder_action">
+          <option value="assign">Move to folder</option>
+          <option value="clear">Clear folder</option>
+        </select>
+      </label>
+      <button type="submit">Apply to selected</button>
+    </form>
+  </div>
   <div class="card">
     {% if feeds|length == 0 %}
       <div class="empty-state muted">No feeds yet.</div>
@@ -172,6 +223,9 @@
         <table>
           <thead>
             <tr>
+              <th class="feeds-table__select">
+                <input type="checkbox" data-feed-select-all aria-label="Select all feeds" />
+              </th>
               <th>Name</th>
               <th>URL</th>
               <th>Folder</th>
@@ -183,6 +237,9 @@
           <tbody>
             {% for feed in feeds %}
               <tr>
+                <td class="feeds-table__select">
+                  <input form="feeds-bulk-form" type="checkbox" name="feed_ids[]" value="{{ feed.id }}" data-feed-select aria-label="Select {{ feed.name }}" />
+                </td>
                 <td class="feeds-table__name">
                   <span class="feed-name">
                     <strong>{{ feed.name }}</strong>
@@ -226,4 +283,30 @@
       </div>
     {% endif %}
   </div>
+  <script>
+    (function () {
+      var selectAll = document.querySelector('[data-feed-select-all]');
+      var checkboxes = Array.prototype.slice.call(document.querySelectorAll('[data-feed-select]'));
+      if (!selectAll || !checkboxes.length) return;
+
+      function syncMaster() {
+        var checkedCount = checkboxes.filter(function (checkbox) { return checkbox.checked; }).length;
+        selectAll.checked = checkedCount === checkboxes.length;
+        selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+      }
+
+      selectAll.addEventListener('change', function () {
+        checkboxes.forEach(function (checkbox) {
+          checkbox.checked = selectAll.checked;
+        });
+        syncMaster();
+      });
+
+      checkboxes.forEach(function (checkbox) {
+        checkbox.addEventListener('change', syncMaster);
+      });
+
+      syncMaster();
+    })();
+  </script>
 {% endblock %}

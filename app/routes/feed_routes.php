@@ -225,6 +225,37 @@ function register_feed_routes(App $app): void
         ]);
     });
 
+    $app->post('/feeds/bulk-folder', function ($request, $response) {
+        $data = (array) $request->getParsedBody();
+        $rawIds = $data['feed_ids'] ?? [];
+        $folderName = trim((string) ($data['folder_name'] ?? ''));
+        $folderAction = trim((string) ($data['folder_action'] ?? 'assign'));
+
+        $feedIds = array_values(array_filter(array_map('intval', is_array($rawIds) ? $rawIds : []), static fn (int $id): bool => $id > 0));
+        if ($feedIds === []) {
+            return $response
+                ->withHeader('Location', url_for($request, '/feeds?error=no_feeds_selected'))
+                ->withStatus(302);
+        }
+
+        $targetFolder = $folderAction === 'clear' ? null : ($folderName !== '' ? $folderName : null);
+        if ($folderAction !== 'clear' && $targetFolder === null) {
+            return $response
+                ->withHeader('Location', url_for($request, '/feeds?error=folder_required'))
+                ->withStatus(302);
+        }
+
+        $pdo = db_connection();
+        $placeholders = implode(', ', array_fill(0, count($feedIds), '?'));
+        $params = array_merge([$targetFolder], $feedIds);
+        $update = $pdo->prepare("UPDATE feeds SET folder_name = ? WHERE id IN ({$placeholders})");
+        $update->execute($params);
+
+        return $response
+            ->withHeader('Location', url_for($request, '/feeds?status=bulk_folder_updated'))
+            ->withStatus(302);
+    });
+
     $app->get('/feeds/title-suggest', function ($request, $response) {
         $url = trim((string) ($request->getQueryParams()['url'] ?? ''));
         $title = suggest_feed_title_from_url($url);

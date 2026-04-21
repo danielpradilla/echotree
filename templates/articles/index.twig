@@ -2,8 +2,19 @@
 
 {% block content %}
   <style>
+    body.reader-layout-active {
+      overflow: hidden;
+    }
+    main.main--reader {
+      max-width: none;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      height: var(--reader-main-height, calc(100vh - 72px));
+      overflow: hidden;
+    }
     .reader-page {
-      margin-top: -10px;
+      height: 100%;
     }
     .reader-app {
       background: rgba(255, 255, 255, 0.72);
@@ -11,6 +22,9 @@
       border-radius: 14px;
       box-shadow: 0 24px 48px rgba(11, 93, 30, 0.1);
       overflow: hidden;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
     }
     .reader-app button,
     .reader-app .button-secondary {
@@ -21,7 +35,7 @@
     .reader-topbar {
       position: sticky;
       top: 0;
-      z-index: 20;
+      z-index: 5;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -166,17 +180,20 @@
     }
     .reader-shell {
       display: grid;
-      grid-template-columns: 260px minmax(340px, 32vw) minmax(0, 1fr);
+      grid-template-columns: 260px 360px minmax(0, 1fr);
       gap: 0;
       align-items: stretch;
-      min-height: calc(100vh - 126px);
+      height: var(--reader-shell-height, calc(100vh - 126px));
+      min-height: 0;
+      flex: 1 1 auto;
     }
     .reader-panel {
       min-height: 0;
     }
     .reader-panel--nav,
     .reader-panel--stories {
-      max-height: calc(100vh - 126px);
+      height: 100%;
+      max-height: none;
       overflow: auto;
       background: rgba(245, 245, 239, 0.82);
       scrollbar-width: thin;
@@ -196,9 +213,10 @@
       padding: 8px 10px 10px;
       min-width: 0;
       overflow: hidden;
+      height: 100%;
     }
     .reader-shell.is-nav-collapsed {
-      grid-template-columns: 0 minmax(340px, 32vw) minmax(0, 1fr);
+      grid-template-columns: 0 360px minmax(0, 1fr);
     }
     .reader-shell.is-stories-collapsed {
       grid-template-columns: 260px 0 minmax(0, 1fr);
@@ -403,8 +421,9 @@
       display: flex;
       flex-direction: column;
       gap: 16px;
-      min-height: 400px;
+      min-height: 0;
       min-width: 0;
+      height: 100%;
     }
     .reader-stage {
       display: grid;
@@ -416,6 +435,9 @@
     .reader-stage__article {
       min-width: 0;
       padding-right: 14px;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
     }
     .reader-stage__compose {
       position: sticky;
@@ -426,7 +448,9 @@
     }
     .inbox__iframe {
       width: 100%;
-      height: calc(100vh - 210px);
+      height: auto;
+      flex: 1 1 auto;
+      min-height: 0;
       border: 1px solid var(--border);
       border-radius: 14px;
       background: var(--card-solid);
@@ -531,17 +555,32 @@
       box-shadow: none;
     }
     @media (max-width: 900px) {
+      body.reader-layout-active {
+        overflow: auto;
+      }
+      main.main--reader {
+        height: auto;
+        overflow: visible;
+      }
       .reader-topbar {
         padding: 4px 6px;
       }
+      .reader-page,
+      .reader-app,
+      .reader-shell,
+      .reader-viewer {
+        height: auto;
+      }
       .reader-shell { grid-template-columns: 1fr; }
       .reader-panel--nav,
-      .reader-panel--stories { max-height: none; border-right: 0; padding-right: 0; }
+      .reader-panel--stories { height: auto; max-height: none; border-right: 0; padding-right: 0; }
       .reader-panel--main {
         padding: 14px 12px 18px;
+        height: auto;
       }
       .reader-stage {
         grid-template-columns: 1fr;
+        height: auto;
       }
       .reader-stage__compose {
         position: static;
@@ -914,6 +953,41 @@
   </div>
 
   <script>
+    (function () {
+      var body = document.body;
+      var main = document.querySelector('main');
+      var header = document.querySelector('header');
+      var readerApp = document.querySelector('.reader-app');
+      var readerTopbar = document.querySelector('.reader-topbar');
+      var noticeBar = document.querySelector('.reader-notice-bar');
+      if (!body || !main || !readerApp || !readerTopbar) return;
+
+      function applyReaderViewport() {
+        if (window.innerWidth <= 900) {
+          document.documentElement.style.removeProperty('--reader-main-height');
+          document.documentElement.style.removeProperty('--reader-shell-height');
+          body.classList.remove('reader-layout-active');
+          main.classList.remove('main--reader');
+          return;
+        }
+
+        var headerHeight = header ? Math.ceil(header.getBoundingClientRect().height) : 0;
+        var topbarHeight = Math.ceil(readerTopbar.getBoundingClientRect().height);
+        var noticeHeight = noticeBar ? Math.ceil(noticeBar.getBoundingClientRect().height) : 0;
+        var mainHeight = Math.max(0, window.innerHeight - headerHeight);
+        var shellHeight = Math.max(0, mainHeight - topbarHeight - noticeHeight);
+
+        document.documentElement.style.setProperty('--reader-main-height', mainHeight + 'px');
+        document.documentElement.style.setProperty('--reader-shell-height', shellHeight + 'px');
+        body.classList.add('reader-layout-active');
+        main.classList.add('main--reader');
+      }
+
+      window.addEventListener('resize', applyReaderViewport);
+      window.addEventListener('load', applyReaderViewport);
+      applyReaderViewport();
+    })();
+
     (function () {
       var storagePrefix = 'echotree.reader.';
       var storiesPanel = document.querySelector('.reader-panel--stories');
