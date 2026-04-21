@@ -527,6 +527,31 @@
     .inbox__meta .actions-row {
       align-items: center;
     }
+    .reader-mode-links {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .reader-mode-link {
+      padding: 5px 9px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+      text-decoration: none;
+      background: rgba(255, 255, 255, 0.82);
+      font-size: 12px;
+      line-height: 1;
+    }
+    .reader-mode-link.is-active {
+      color: #fff;
+      background: var(--ink);
+      border-color: var(--ink);
+    }
+    .reader-mode-link.is-disabled {
+      opacity: 0.45;
+      pointer-events: none;
+    }
     .panel-kicker {
       margin-bottom: 10px;
       font-size: 12px;
@@ -882,14 +907,27 @@
                 </div>
                 <div class="inbox__meta">
                   <div class="actions-row">
-                    {% if mode == 'reader' %}
-                      <span class="muted">Reader</span>
-                      <a href="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode=original&density={{ density }}&layout={{ layout }}" data-reader-toggle-link>Original</a>
-                    {% else %}
-                      <a href="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode=reader&density={{ density }}&layout={{ layout }}" data-reader-toggle-link>Reader</a>
-                      <span class="muted">Original</span>
-                    {% endif %}
-                    <a href="{{ selected.url }}" target="_blank" rel="noopener" data-reader-open-link>Open in new tab</a>
+                    <span class="reader-mode-links">
+                      <a
+                        href="{{ selected.mode_urls.feed|default(base_path ~ '/articles?' ~ (active_feed_id ? 'feed_id=' ~ active_feed_id ~ '&' : '') ~ 'selected=' ~ selected.id ~ '&mode=feed&density=' ~ density ~ '&layout=' ~ layout) }}"
+                        class="reader-mode-link{% if mode == 'feed' %} is-active{% endif %}{% if selected.available_modes.feed is defined and not selected.available_modes.feed %} is-disabled{% endif %}"
+                        data-reader-mode-link
+                        data-mode-link="feed"
+                      >Feed</a>
+                      <a
+                        href="{{ selected.mode_urls.extracted|default(base_path ~ '/articles?' ~ (active_feed_id ? 'feed_id=' ~ active_feed_id ~ '&' : '') ~ 'selected=' ~ selected.id ~ '&mode=extracted&density=' ~ density ~ '&layout=' ~ layout) }}"
+                        class="reader-mode-link{% if mode == 'extracted' %} is-active{% endif %}{% if selected.available_modes.extracted is defined and not selected.available_modes.extracted %} is-disabled{% endif %}"
+                        data-reader-mode-link
+                        data-mode-link="extracted"
+                      >Extracted</a>
+                      <a
+                        href="{{ selected.mode_urls.original|default(base_path ~ '/articles?' ~ (active_feed_id ? 'feed_id=' ~ active_feed_id ~ '&' : '') ~ 'selected=' ~ selected.id ~ '&mode=original&density=' ~ density ~ '&layout=' ~ layout) }}"
+                        class="reader-mode-link{% if mode == 'original' %} is-active{% endif %}"
+                        data-reader-mode-link
+                        data-mode-link="original"
+                      >Original</a>
+                    </span>
+                    <a href="{{ selected.url }}" target="_blank" rel="noopener" data-reader-open-link>Open</a>
                     <form method="post" action="{{ base_path }}/articles/{{ selected.id }}/archive" class="inline-form" data-reader-archive-form>
                       <input type="hidden" name="_csrf" value="{{ csrf }}" />
                       <button type="submit" class="button-secondary">Archive</button>
@@ -1141,7 +1179,7 @@
       var readerAccent = document.querySelector('[data-reader-accent]');
       var readerFeedName = document.querySelector('[data-reader-feed-name]');
       var readerFeedHost = document.querySelector('[data-reader-feed-host]');
-      var readerToggleLink = document.querySelector('[data-reader-toggle-link]');
+      var readerModeLinks = Array.prototype.slice.call(document.querySelectorAll('[data-reader-mode-link]'));
       var readerOpenLink = document.querySelector('[data-reader-open-link]');
       var readerArchiveForm = document.querySelector('[data-reader-archive-form]');
       var readerOriginalShell = document.querySelector('[data-reader-original-shell]');
@@ -1156,6 +1194,19 @@
       var commentLength = document.getElementById('article-comment-length');
       var storyItems = Array.prototype.slice.call(document.querySelectorAll('[data-story-item]'));
       var requestId = 0;
+
+      function applyModeLinks(article) {
+        readerModeLinks.forEach(function (link) {
+          var targetMode = link.getAttribute('data-mode-link');
+          if (!targetMode) return;
+          if (article.mode_urls && article.mode_urls[targetMode]) {
+            link.href = article.mode_urls[targetMode];
+          }
+          var isAvailable = article.available_modes ? article.available_modes[targetMode] !== false : true;
+          link.classList.toggle('is-active', article.mode === targetMode);
+          link.classList.toggle('is-disabled', !isAvailable);
+        });
+      }
 
       function updateActiveStory(articleId) {
         storyItems.forEach(function (item) {
@@ -1201,7 +1252,7 @@
             readerFavicon.style.display = 'none';
           }
         }
-        if (readerToggleLink) readerToggleLink.href = article.original_toggle_url;
+        applyModeLinks(article);
         if (readerOpenLink) readerOpenLink.href = article.url;
         if (readerArchiveForm) readerArchiveForm.action = article.archive_url;
         if (readerOriginalShell && readerInline && readerInlineBody) {
@@ -1218,6 +1269,7 @@
             readerInlineBody.innerHTML = article.reader_html || '';
           }
         }
+        mode = article.mode || mode;
         if (publishArticleId) publishArticleId.value = String(article.id);
         if (publishReturnTo) publishReturnTo.value = article.return_to;
         if (generateButton) generateButton.setAttribute('data-article-id', String(article.id));
@@ -1265,7 +1317,7 @@
           .then(function (payload) {
             if (currentRequestId !== requestId) return;
             if (!payload || !payload.ok || !payload.article) throw new Error('article_fetch_failed');
-            applyArticle(payload.article, link.href, replaceHistory);
+            applyArticle(payload.article, payload.article.return_to || link.href, replaceHistory);
           })
           .catch(function () {
             window.location.href = link.href;
@@ -1311,6 +1363,7 @@
         var currentUrl = new URL(window.location.href);
         var selected = parseInt(currentUrl.searchParams.get('selected') || '0', 10);
         if (!selected) return;
+        mode = currentUrl.searchParams.get('mode') || mode;
 
         var matchingLink = storyLinks.find(function (link) {
           return String(selected) === link.getAttribute('data-article-id');
@@ -1369,7 +1422,7 @@
       var readerAccent = document.querySelector('[data-reader-accent]');
       var readerFeedName = document.querySelector('[data-reader-feed-name]');
       var readerFeedHost = document.querySelector('[data-reader-feed-host]');
-      var readerToggleLink = document.querySelector('[data-reader-toggle-link]');
+      var readerModeLinks = Array.prototype.slice.call(document.querySelectorAll('[data-reader-mode-link]'));
       var readerOpenLink = document.querySelector('[data-reader-open-link]');
       var readerArchiveForm = document.querySelector('[data-reader-archive-form]');
       var readerOriginalShell = document.querySelector('[data-reader-original-shell]');
@@ -1410,7 +1463,16 @@
                 readerFavicon.style.display = 'none';
               }
             }
-            if (readerToggleLink) readerToggleLink.href = article.original_toggle_url;
+            readerModeLinks.forEach(function (link) {
+              var targetMode = link.getAttribute('data-mode-link');
+              if (!targetMode) return;
+              if (article.mode_urls && article.mode_urls[targetMode]) {
+                link.href = article.mode_urls[targetMode];
+              }
+              var isAvailable = article.available_modes ? article.available_modes[targetMode] !== false : true;
+              link.classList.toggle('is-active', article.mode === targetMode);
+              link.classList.toggle('is-disabled', !isAvailable);
+            });
             if (readerOpenLink) readerOpenLink.href = article.url;
             if (readerArchiveForm) readerArchiveForm.action = article.archive_url;
             if (readerOriginalShell && readerInline && readerInlineBody) {
@@ -1441,6 +1503,7 @@
             if (commentLength) {
               commentLength.textContent = '0';
             }
+            mode = article.mode || mode;
             if (article.return_to && window.history && window.history.replaceState) {
               window.history.replaceState({}, '', article.return_to);
             }

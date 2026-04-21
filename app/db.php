@@ -51,6 +51,7 @@ function auto_init_schema(PDO $pdo, string $baseDir): void
 function ensure_runtime_schema(PDO $pdo): void
 {
     ensure_feeds_schema($pdo);
+    ensure_articles_schema($pdo);
 
     $pdo->exec(
         "CREATE TABLE IF NOT EXISTS share_history ("
@@ -75,6 +76,32 @@ function ensure_runtime_schema(PDO $pdo): void
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_share_history_shared_at ON share_history(shared_at)');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_share_history_url ON share_history(url)');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_share_history_post_id ON share_history(post_id)');
+}
+
+function ensure_articles_schema(PDO $pdo): void
+{
+    $columns = $pdo->query("PRAGMA table_info(articles)")->fetchAll();
+    $columnNames = array_map(static fn (array $column): string => (string) ($column['name'] ?? ''), $columns);
+
+    if (!in_array('feed_content_html', $columnNames, true)) {
+        $pdo->exec('ALTER TABLE articles ADD COLUMN feed_content_html TEXT NULL');
+    }
+    if (!in_array('feed_content_text', $columnNames, true)) {
+        $pdo->exec('ALTER TABLE articles ADD COLUMN feed_content_text TEXT NULL');
+    }
+    if (!in_array('extracted_content_html', $columnNames, true)) {
+        $pdo->exec('ALTER TABLE articles ADD COLUMN extracted_content_html TEXT NULL');
+    }
+    if (!in_array('extracted_content_text', $columnNames, true)) {
+        $pdo->exec('ALTER TABLE articles ADD COLUMN extracted_content_text TEXT NULL');
+    }
+
+    $pdo->exec(
+        'UPDATE articles '
+        . 'SET feed_content_html = COALESCE(feed_content_html, content_html), '
+        . 'feed_content_text = COALESCE(feed_content_text, content_text) '
+        . 'WHERE feed_content_html IS NULL OR feed_content_text IS NULL'
+    );
 }
 
 function ensure_feeds_schema(PDO $pdo): void

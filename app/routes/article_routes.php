@@ -215,11 +215,14 @@ function upsert_manual_article_from_url(PDO $pdo, string $url): ?int
         $articleId = (int) $row['id'];
         if ($contentHtml !== '' || $contentText !== '' || $title !== '') {
             $update = $pdo->prepare(
-                'UPDATE articles SET title = :title, content_html = :content_html, content_text = :content_text '
+                'UPDATE articles SET title = :title, extracted_content_html = :extracted_content_html, '
+                . 'extracted_content_text = :extracted_content_text, content_html = :content_html, content_text = :content_text '
                 . 'WHERE id = :id'
             );
             $update->execute([
                 ':title' => $title !== '' ? $title : $url,
+                ':extracted_content_html' => $contentHtml !== '' ? $contentHtml : null,
+                ':extracted_content_text' => $contentText !== '' ? $contentText : null,
                 ':content_html' => $contentHtml,
                 ':content_text' => $contentText,
                 ':id' => $articleId,
@@ -230,13 +233,15 @@ function upsert_manual_article_from_url(PDO $pdo, string $url): ?int
 
     $feedId = manual_feed_id($pdo);
     $insertArticle = $pdo->prepare(
-        'INSERT INTO articles (feed_id, title, url, content_html, content_text, summary, published_at) '
-        . 'VALUES (:feed_id, :title, :url, :content_html, :content_text, :summary, :published_at)'
+        'INSERT INTO articles (feed_id, title, url, extracted_content_html, extracted_content_text, content_html, content_text, summary, published_at) '
+        . 'VALUES (:feed_id, :title, :url, :extracted_content_html, :extracted_content_text, :content_html, :content_text, :summary, :published_at)'
     );
     $insertArticle->execute([
         ':feed_id' => $feedId,
         ':title' => $title !== '' ? $title : $url,
         ':url' => $url,
+        ':extracted_content_html' => $contentHtml !== '' ? $contentHtml : null,
+        ':extracted_content_text' => $contentText !== '' ? $contentText : null,
         ':content_html' => $contentHtml,
         ':content_text' => $contentText,
         ':summary' => null,
@@ -246,9 +251,72 @@ function upsert_manual_article_from_url(PDO $pdo, string $url): ?int
     return (int) $pdo->lastInsertId();
 }
 
+function article_reader_modes(): array
+{
+    return ['feed', 'extracted', 'original'];
+}
+
+function normalize_article_mode(?string $mode): string
+{
+    $candidate = strtolower(trim((string) $mode));
+    if ($candidate === 'reader' || $candidate === '') {
+        return 'auto';
+    }
+    return in_array($candidate, article_reader_modes(), true) ? $candidate : 'auto';
+}
+
+function article_has_substantial_source(array $article, string $source): bool
+{
+    $text = '';
+    if ($source === 'feed') {
+        $text = trim((string) ($article['feed_content_text'] ?? ''));
+    } elseif ($source === 'extracted') {
+        $text = trim((string) ($article['extracted_content_text'] ?? ''));
+    }
+
+    if ($text === '') {
+        $html = '';
+        if ($source === 'feed') {
+            $html = trim((string) ($article['feed_content_html'] ?? ''));
+        } elseif ($source === 'extracted') {
+            $html = trim((string) ($article['extracted_content_html'] ?? ''));
+        }
+        $text = trim(strip_tags($html));
+    }
+
+    return mb_strlen($text) >= 280;
+}
+
+function resolve_article_mode(array $article, ?string $requestedMode): string
+{
+    $mode = normalize_article_mode($requestedMode);
+    if ($mode === 'original') {
+        return 'original';
+    }
+    if ($mode === 'feed' && article_has_substantial_source($article, 'feed')) {
+        return 'feed';
+    }
+    if ($mode === 'extracted' && article_has_substantial_source($article, 'extracted')) {
+        return 'extracted';
+    }
+    if ($mode === 'feed') {
+        return article_has_substantial_source($article, 'extracted') ? 'extracted' : 'feed';
+    }
+    if ($mode === 'extracted') {
+        return article_has_substantial_source($article, 'feed') ? 'feed' : 'extracted';
+    }
+    if (article_has_substantial_source($article, 'feed')) {
+        return 'feed';
+    }
+    if (article_has_substantial_source($article, 'extracted')) {
+        return 'extracted';
+    }
+    return 'original';
+}
+
 function article_reader_payload(array $article, string $mode, string $density, string $layout, string $basePath, ?int $feedId = null): array
 {
-    $safeMode = $mode === 'original' ? 'original' : 'reader';
+    $safeMode = resolve_article_mode($article, $mode);
     $safeDensity = $density === 'compact' ? 'compact' : 'comfortable';
     $safeLayout = in_array($layout, ['split', 'magazine', 'grid'], true) ? $layout : 'split';
     $baseQuery = [
@@ -261,8 +329,12 @@ function article_reader_payload(array $article, string $mode, string $density, s
         $baseQuery['feed_id'] = $feedId;
     }
 
-    $toggleQuery = $baseQuery;
-    $toggleQuery['mode'] = $safeMode === 'reader' ? 'original' : 'reader';
+    $modeUrls = [];
+    foreach (article_reader_modes() as $readerMode) {
+        $query = $baseQuery;
+        $query['mode'] = $readerMode;
+        $modeUrls[$readerMode] = $basePath . '/articles?' . http_build_query($query);
+    }
 
     return [
         'id' => (int) $article['id'],
@@ -276,21 +348,65 @@ function article_reader_payload(array $article, string $mode, string $density, s
         'mode' => $safeMode,
         'density' => $safeDensity,
         'layout' => $safeLayout,
-        'reader_html' => $safeMode === 'reader' ? article_reader_body_html($article) : '',
+        'reader_html' => $safeMode !== 'original' ? article_reader_body_html($article, $safeMode) : '',
+        'available_modes' => [
+            'feed' => article_has_substantial_source($article, 'feed'),
+            'extracted' => article_has_substantial_source($article, 'extracted'),
+            'original' => true,
+        ],
+        'mode_urls' => $modeUrls,
         'embed_url' => $basePath . '/articles/' . (int) $article['id'] . '/embed?' . http_build_query([
             'mode' => $safeMode,
             'density' => $safeDensity,
             'layout' => $safeLayout,
         ]),
-        'original_toggle_url' => $basePath . '/articles?' . http_build_query($toggleQuery),
         'archive_url' => $basePath . '/articles/' . (int) $article['id'] . '/archive',
         'return_to' => $basePath . '/articles?' . http_build_query($baseQuery),
     ];
 }
 
-function article_reader_body_html(array $article): string
+function article_source_html(array $article, string $mode): string
 {
-    $htmlContent = (string) ($article['content_html'] ?? '');
+    if ($mode === 'feed') {
+        $html = trim((string) ($article['feed_content_html'] ?? ''));
+        if ($html !== '') {
+            return $html;
+        }
+    }
+    if ($mode === 'extracted') {
+        $html = trim((string) ($article['extracted_content_html'] ?? ''));
+        if ($html !== '') {
+            return $html;
+        }
+    }
+    return trim((string) ($article['content_html'] ?? ''));
+}
+
+function article_source_text(array $article, string $mode): string
+{
+    if ($mode === 'feed') {
+        $text = trim((string) ($article['feed_content_text'] ?? ''));
+        if ($text !== '') {
+            return $text;
+        }
+    }
+    if ($mode === 'extracted') {
+        $text = trim((string) ($article['extracted_content_text'] ?? ''));
+        if ($text !== '') {
+            return $text;
+        }
+    }
+    return trim((string) ($article['content_text'] ?? ''));
+}
+
+function article_reader_body_html(array $article, ?string $requestedMode = null): string
+{
+    $mode = resolve_article_mode($article, $requestedMode);
+    if ($mode === 'original') {
+        return '';
+    }
+
+    $htmlContent = article_source_html($article, $mode);
     $contentHtml = '';
 
     if ($htmlContent !== '') {
@@ -330,7 +446,7 @@ function article_reader_body_html(array $article): string
     }
 
     if (trim($body) === '') {
-        $text = trim((string) ($article['content_text'] ?? ''));
+        $text = article_source_text($article, $mode);
         $paragraphs = array_filter(preg_split("/\\R{2,}/", $text));
         foreach ($paragraphs as $para) {
             $safe = htmlspecialchars(trim($para), ENT_QUOTES, 'UTF-8');
@@ -350,7 +466,7 @@ function register_article_routes(App $app): void
         $queryParams = $request->getQueryParams();
         $feedId = isset($queryParams['feed_id']) ? (int) $queryParams['feed_id'] : null;
         $selectedId = isset($queryParams['selected']) ? (int) $queryParams['selected'] : null;
-        $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'reader';
+        $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'auto';
         $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'comfortable';
         $layout = isset($queryParams['layout']) ? (string) $queryParams['layout'] : 'split';
 
@@ -372,7 +488,18 @@ function register_article_routes(App $app): void
             $selectedArticle = find_article_with_feed($pdo, (int) $articles[0]['id']);
         }
         if ($selectedArticle !== null) {
-            $selectedArticle['reader_html'] = article_reader_body_html($selectedArticle);
+            $mode = resolve_article_mode($selectedArticle, $mode);
+            $selectedPayload = article_reader_payload(
+                $selectedArticle,
+                $mode,
+                $density,
+                $layout,
+                base_path($request),
+                $feedId
+            );
+            $selectedArticle['reader_html'] = $selectedPayload['reader_html'];
+            $selectedArticle['available_modes'] = $selectedPayload['available_modes'];
+            $selectedArticle['mode_urls'] = $selectedPayload['mode_urls'];
         }
 
         $accounts = list_active_accounts($pdo);
@@ -394,7 +521,7 @@ function register_article_routes(App $app): void
             'active_feed_id' => $feedId,
             'selected' => $selectedArticle,
             'accounts' => $accounts,
-            'mode' => $mode === 'original' ? 'original' : 'reader',
+            'mode' => $mode,
             'density' => $density === 'compact' ? 'compact' : 'comfortable',
             'layout' => in_array($layout, ['split', 'magazine', 'grid'], true) ? $layout : 'split',
             'status' => $queryParams['status'] ?? null,
@@ -450,7 +577,7 @@ function register_article_routes(App $app): void
         $queryParams = $request->getQueryParams();
         $selectedId = isset($queryParams['selected']) ? (int) $queryParams['selected'] : 0;
         $feedId = isset($queryParams['feed_id']) ? (int) $queryParams['feed_id'] : null;
-        $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'reader';
+        $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'auto';
         $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'comfortable';
         $layout = isset($queryParams['layout']) ? (string) $queryParams['layout'] : 'split';
 
@@ -481,7 +608,7 @@ function register_article_routes(App $app): void
         $pdo = db_connection();
         $queryParams = $request->getQueryParams();
         $url = trim((string) ($queryParams['url'] ?? ''));
-        $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'reader';
+        $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'auto';
         $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'comfortable';
         $layout = isset($queryParams['layout']) ? (string) $queryParams['layout'] : 'split';
         $format = isset($queryParams['format']) ? (string) $queryParams['format'] : '';
@@ -518,7 +645,7 @@ function register_article_routes(App $app): void
 
         $redirectQuery = http_build_query([
             'selected' => $articleId,
-            'mode' => $mode === 'original' ? 'original' : 'reader',
+            'mode' => normalize_article_mode($mode),
             'density' => $density === 'compact' ? 'compact' : 'comfortable',
             'layout' => in_array($layout, ['split', 'magazine', 'grid'], true) ? $layout : 'split',
         ]);
@@ -532,7 +659,7 @@ function register_article_routes(App $app): void
         $pdo = db_connection();
         $queryParams = $request->getQueryParams();
         $selectedId = isset($queryParams['selected']) ? (int) $queryParams['selected'] : null;
-        $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'reader';
+        $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'auto';
         $error = null;
         $urlFromQuery = trim((string) ($queryParams['url'] ?? ''));
 
@@ -562,7 +689,7 @@ function register_article_routes(App $app): void
             'title' => 'Share',
             'selected' => $selectedArticle,
             'accounts' => $accounts,
-            'mode' => $mode === 'original' ? 'original' : 'reader',
+            'mode' => normalize_article_mode($mode),
             'csrf' => csrf_token(),
             'submit_token' => create_post_submit_token(),
             'error' => $error,
@@ -900,11 +1027,14 @@ function register_article_routes(App $app): void
         $articleId = (int) ($args['id'] ?? 0);
         $pdo = db_connection();
         $queryParams = $request->getQueryParams();
-        $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'reader';
+        $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'auto';
         $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'comfortable';
         $layout = isset($queryParams['layout']) ? (string) $queryParams['layout'] : 'split';
 
-        $stmt = $pdo->prepare('SELECT title, content_html, content_text FROM articles WHERE id = :id');
+        $stmt = $pdo->prepare(
+            'SELECT title, content_html, content_text, feed_content_html, feed_content_text, '
+            . 'extracted_content_html, extracted_content_text FROM articles WHERE id = :id'
+        );
         $stmt->execute([':id' => $articleId]);
         $article = $stmt->fetch();
 
@@ -912,11 +1042,12 @@ function register_article_routes(App $app): void
             return $response->withStatus(404);
         }
 
-        $body = article_reader_body_html($article);
+        $resolvedMode = resolve_article_mode($article, $mode);
+        $body = article_reader_body_html($article, $resolvedMode);
 
         $followBase = base_path($request) . '/articles/follow?';
         $followParams = http_build_query([
-            'mode' => $mode === 'original' ? 'original' : 'reader',
+            'mode' => $resolvedMode,
             'density' => $density === 'compact' ? 'compact' : 'comfortable',
             'layout' => in_array($layout, ['split', 'magazine', 'grid'], true) ? $layout : 'split',
         ]);

@@ -153,27 +153,37 @@ function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): arra
             $title = trim((string) $item->get_title());
             $publishedAt = $item->get_date('Y-m-d H:i:s');
 
-            $contentHtml = trim((string) $item->get_content());
-            if ($contentHtml === '') {
-                $contentHtml = trim((string) $item->get_description());
+            $feedContentHtml = trim((string) $item->get_content());
+            if ($feedContentHtml === '') {
+                $feedContentHtml = trim((string) $item->get_description());
             }
+            $feedContentText = trim(strip_tags($feedContentHtml));
+            $extractedContentHtml = '';
+            $extractedContentText = '';
 
             if ($extractFullContent) {
-                $extracted = extract_and_merge_article_content($url, $title, $contentHtml, 15);
+                $extracted = extract_and_merge_article_content($url, $title, $feedContentHtml, 15);
                 $title = trim((string) ($extracted['title'] ?? $title));
-                $contentHtml = (string) ($extracted['content_html'] ?? $contentHtml);
-                $contentText = (string) ($extracted['content_text'] ?? trim(strip_tags($contentHtml)));
-            } else {
-                $contentText = trim(strip_tags($contentHtml));
+                $extractedContentHtml = trim((string) ($extracted['content_html'] ?? ''));
+                $extractedContentText = trim((string) ($extracted['content_text'] ?? ''));
             }
+
+            $contentHtml = $extractedContentHtml !== '' ? $extractedContentHtml : $feedContentHtml;
+            $contentText = $extractedContentText !== '' ? $extractedContentText : $feedContentText;
 
             if ($existingId) {
                 $update = $pdo->prepare(
-                    'UPDATE articles SET title = :title, content_html = :content_html, content_text = :content_text, '
-                    . 'published_at = :published_at WHERE id = :id'
+                    'UPDATE articles SET title = :title, feed_content_html = :feed_content_html, '
+                    . 'feed_content_text = :feed_content_text, extracted_content_html = :extracted_content_html, '
+                    . 'extracted_content_text = :extracted_content_text, content_html = :content_html, '
+                    . 'content_text = :content_text, published_at = :published_at WHERE id = :id'
                 );
                 $update->execute([
                     ':title' => $title !== '' ? $title : $url,
+                    ':feed_content_html' => $feedContentHtml !== '' ? $feedContentHtml : null,
+                    ':feed_content_text' => $feedContentText !== '' ? $feedContentText : null,
+                    ':extracted_content_html' => $extractedContentHtml !== '' ? $extractedContentHtml : null,
+                    ':extracted_content_text' => $extractedContentText !== '' ? $extractedContentText : null,
                     ':content_html' => $contentHtml,
                     ':content_text' => $contentText,
                     ':published_at' => $publishedAt,
@@ -186,13 +196,19 @@ function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): arra
                 }
             } else {
                 $insert = $pdo->prepare(
-                    'INSERT INTO articles (feed_id, title, url, content_html, content_text, summary, published_at) '
-                    . 'VALUES (:feed_id, :title, :url, :content_html, :content_text, :summary, :published_at)'
+                    'INSERT INTO articles (feed_id, title, url, feed_content_html, feed_content_text, extracted_content_html, '
+                    . 'extracted_content_text, content_html, content_text, summary, published_at) '
+                    . 'VALUES (:feed_id, :title, :url, :feed_content_html, :feed_content_text, :extracted_content_html, '
+                    . ':extracted_content_text, :content_html, :content_text, :summary, :published_at)'
                 );
                 $insert->execute([
                     ':feed_id' => $feedId,
                     ':title' => $title !== '' ? $title : $url,
                     ':url' => $url,
+                    ':feed_content_html' => $feedContentHtml !== '' ? $feedContentHtml : null,
+                    ':feed_content_text' => $feedContentText !== '' ? $feedContentText : null,
+                    ':extracted_content_html' => $extractedContentHtml !== '' ? $extractedContentHtml : null,
+                    ':extracted_content_text' => $extractedContentText !== '' ? $extractedContentText : null,
                     ':content_html' => $contentHtml,
                     ':content_text' => $contentText,
                     ':summary' => null,
