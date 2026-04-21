@@ -534,19 +534,29 @@
       flex-wrap: wrap;
     }
     .reader-mode-link {
-      padding: 5px 9px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 7px 10px;
       border: 1px solid var(--border);
       border-radius: 999px;
-      color: var(--muted);
+      color: var(--ink);
       text-decoration: none;
-      background: rgba(255, 255, 255, 0.82);
-      font-size: 12px;
-      line-height: 1;
+      background: transparent;
+      font-size: inherit;
+      line-height: 1.1;
+      transition: background 120ms ease, transform 120ms ease, border-color 120ms ease, color 120ms ease;
+    }
+    .reader-mode-link:hover {
+      background: rgba(246, 251, 243, 0.92);
+      border-color: var(--accent);
+      color: var(--ink);
+      transform: translateY(-1px);
     }
     .reader-mode-link.is-active {
       color: #fff;
-      background: var(--ink);
-      border-color: var(--ink);
+      background: var(--accent);
+      border-color: var(--accent);
     }
     .reader-mode-link.is-disabled {
       opacity: 0.45;
@@ -927,7 +937,7 @@
                         data-mode-link="original"
                       >Original</a>
                     </span>
-                    <a href="{{ selected.url }}" target="_blank" rel="noopener" data-reader-open-link>Open</a>
+                    <a href="{{ selected.url }}" target="_blank" rel="noopener" class="reader-mode-link" data-reader-open-link>Open</a>
                     <form method="post" action="{{ base_path }}/articles/{{ selected.id }}/archive" class="inline-form" data-reader-archive-form>
                       <input type="hidden" name="_csrf" value="{{ csrf }}" />
                       <button type="submit" class="button-secondary">Archive</button>
