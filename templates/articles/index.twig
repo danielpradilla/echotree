@@ -4,16 +4,16 @@
   <style>
     .reader-page {
       position: fixed;
-      top: calc(var(--app-header-height) + var(--app-main-top-gap));
-      right: var(--app-main-gutter);
-      bottom: var(--app-main-bottom-gap);
-      left: var(--app-main-gutter);
+      top: var(--app-header-height);
+      right: 0;
+      bottom: 0;
+      left: 0;
       overflow: hidden;
     }
     .reader-app {
       background: rgba(255, 255, 255, 0.72);
-      border: 1px solid rgba(11, 93, 30, 0.1);
-      border-radius: 14px;
+      border: 0;
+      border-radius: 0;
       box-shadow: 0 24px 48px rgba(11, 93, 30, 0.1);
       overflow: hidden;
       height: 100%;
@@ -560,6 +560,10 @@
         position: static;
         inset: auto;
         overflow: visible;
+      }
+      .reader-app {
+        border: 1px solid rgba(11, 93, 30, 0.1);
+        border-radius: 14px;
       }
       .reader-page,
       .reader-app,
