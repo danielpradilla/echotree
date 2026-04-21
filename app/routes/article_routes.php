@@ -276,6 +276,7 @@ function article_reader_payload(array $article, string $mode, string $density, s
         'mode' => $safeMode,
         'density' => $safeDensity,
         'layout' => $safeLayout,
+        'reader_html' => $safeMode === 'reader' ? article_reader_body_html($article) : '',
         'embed_url' => $basePath . '/articles/' . (int) $article['id'] . '/embed?' . http_build_query([
             'mode' => $safeMode,
             'density' => $safeDensity,
@@ -285,6 +286,61 @@ function article_reader_payload(array $article, string $mode, string $density, s
         'archive_url' => $basePath . '/articles/' . (int) $article['id'] . '/archive',
         'return_to' => $basePath . '/articles?' . http_build_query($baseQuery),
     ];
+}
+
+function article_reader_body_html(array $article): string
+{
+    $htmlContent = (string) ($article['content_html'] ?? '');
+    $contentHtml = '';
+
+    if ($htmlContent !== '') {
+        try {
+            $config = new andreskrey\Readability\Configuration();
+            $config->setFixRelativeURLs(true);
+            $config->setOriginalURL(true);
+            $readability = new andreskrey\Readability\Readability($config);
+            $readability->parse($htmlContent);
+            $node = $readability->getContent();
+            if ($node) {
+                $contentHtml = $node->C14N();
+            }
+        } catch (Throwable $e) {
+            $contentHtml = '';
+        }
+    }
+
+    if ($contentHtml === '') {
+        $contentHtml = $htmlContent;
+    }
+
+    $dom = new DOMDocument();
+    libxml_use_internal_errors(true);
+    $dom->loadHTML('<?xml encoding="utf-8" ?>' . $contentHtml);
+    libxml_clear_errors();
+    $xpath = new DOMXPath($dom);
+    foreach ($xpath->query('//script|//style|//noscript|//header|//footer|//nav|//aside|//form|//button') as $node) {
+        $node->parentNode->removeChild($node);
+    }
+
+    $body = '';
+    foreach ($dom->getElementsByTagName('body') as $bodyNode) {
+        $body = $dom->saveHTML($bodyNode);
+        $body = preg_replace('/^<body>|<\\/body>$/', '', $body);
+        break;
+    }
+
+    if (trim($body) === '') {
+        $text = trim((string) ($article['content_text'] ?? ''));
+        $paragraphs = array_filter(preg_split("/\\R{2,}/", $text));
+        foreach ($paragraphs as $para) {
+            $safe = htmlspecialchars(trim($para), ENT_QUOTES, 'UTF-8');
+            if ($safe !== '') {
+                $body .= '<p>' . nl2br($safe) . '</p>';
+            }
+        }
+    }
+
+    return $body;
 }
 
 function register_article_routes(App $app): void
@@ -314,6 +370,9 @@ function register_article_routes(App $app): void
         }
         if ($selectedArticle === null && count($articles) > 0) {
             $selectedArticle = find_article_with_feed($pdo, (int) $articles[0]['id']);
+        }
+        if ($selectedArticle !== null) {
+            $selectedArticle['reader_html'] = article_reader_body_html($selectedArticle);
         }
 
         $accounts = list_active_accounts($pdo);
@@ -853,55 +912,7 @@ function register_article_routes(App $app): void
             return $response->withStatus(404);
         }
 
-        $htmlContent = (string) $article['content_html'];
-        $contentHtml = '';
-
-        if ($htmlContent !== '') {
-            try {
-                $config = new andreskrey\Readability\Configuration();
-                $config->setFixRelativeURLs(true);
-                $config->setOriginalURL(true);
-                $readability = new andreskrey\Readability\Readability($config);
-                $readability->parse($htmlContent);
-                $node = $readability->getContent();
-                if ($node) {
-                    $contentHtml = $node->C14N();
-                }
-            } catch (Throwable $e) {
-                $contentHtml = '';
-            }
-        }
-
-        if ($contentHtml === '') {
-            $contentHtml = $htmlContent;
-        }
-
-        $dom = new DOMDocument();
-        libxml_use_internal_errors(true);
-        $dom->loadHTML('<?xml encoding="utf-8" ?>' . $contentHtml);
-        libxml_clear_errors();
-        $xpath = new DOMXPath($dom);
-        foreach ($xpath->query('//script|//style|//noscript|//header|//footer|//nav|//aside|//form|//button') as $node) {
-            $node->parentNode->removeChild($node);
-        }
-
-        $body = '';
-        foreach ($dom->getElementsByTagName('body') as $bodyNode) {
-            $body = $dom->saveHTML($bodyNode);
-            $body = preg_replace('/^<body>|<\\/body>$/', '', $body);
-            break;
-        }
-
-        if (trim($body) === '') {
-            $text = trim((string) $article['content_text']);
-            $paragraphs = array_filter(preg_split("/\\R{2,}/", $text));
-            foreach ($paragraphs as $para) {
-                $safe = htmlspecialchars(trim($para), ENT_QUOTES, 'UTF-8');
-                if ($safe !== '') {
-                    $body .= '<p>' . nl2br($safe) . '</p>';
-                }
-            }
-        }
+        $body = article_reader_body_html($article);
 
         $followBase = base_path($request) . '/articles/follow?';
         $followParams = http_build_query([
