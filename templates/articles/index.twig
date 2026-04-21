@@ -892,7 +892,11 @@
                 </div>
               </div>
 
-              <iframe class="inbox__iframe" data-reader-iframe {% if mode == 'original' %}src="{{ selected.url }}"{% endif %} title="{{ selected.title }}" {% if mode != 'original' %}style="display: none;"{% endif %}></iframe>
+              <div data-reader-original-shell {% if mode != 'original' %}style="display: none;"{% endif %}>
+                {% if mode == 'original' %}
+                  <iframe class="inbox__iframe" data-reader-iframe src="{{ selected.url }}" title="{{ selected.title }}"></iframe>
+                {% endif %}
+              </div>
               <div class="reader-inline" data-reader-inline {% if mode == 'original' %}style="display: none;"{% endif %}>
                 <div class="reader-inline__body" data-reader-inline-body>{{ selected.reader_html|default('')|raw }}</div>
               </div>
@@ -1134,6 +1138,7 @@
       var readerToggleLink = document.querySelector('[data-reader-toggle-link]');
       var readerOpenLink = document.querySelector('[data-reader-open-link]');
       var readerArchiveForm = document.querySelector('[data-reader-archive-form]');
+      var readerOriginalShell = document.querySelector('[data-reader-original-shell]');
       var readerIframe = document.querySelector('[data-reader-iframe]');
       var readerInline = document.querySelector('[data-reader-inline]');
       var readerInlineBody = document.querySelector('[data-reader-inline-body]');
@@ -1161,6 +1166,19 @@
         });
       }
 
+      function ensureReaderIframe(title) {
+        if (!readerOriginalShell) return null;
+        var iframe = readerOriginalShell.querySelector('[data-reader-iframe]');
+        if (!iframe) {
+          iframe = document.createElement('iframe');
+          iframe.className = 'inbox__iframe';
+          iframe.setAttribute('data-reader-iframe', '');
+          readerOriginalShell.appendChild(iframe);
+        }
+        iframe.title = title || '';
+        return iframe;
+      }
+
       function applyArticle(article, href, replaceHistory) {
         if (!article) return;
         if (readerTitle) readerTitle.textContent = article.title;
@@ -1180,17 +1198,19 @@
         if (readerToggleLink) readerToggleLink.href = article.original_toggle_url;
         if (readerOpenLink) readerOpenLink.href = article.url;
         if (readerArchiveForm) readerArchiveForm.action = article.archive_url;
-        if (readerIframe && readerInline && readerInlineBody) {
+        if (readerOriginalShell && readerInline && readerInlineBody) {
           if (article.mode === 'original') {
-            readerIframe.style.display = '';
+            var activeIframe = ensureReaderIframe(article.title);
+            readerOriginalShell.style.display = '';
             readerInline.style.display = 'none';
-            readerIframe.src = article.url;
+            if (activeIframe) {
+              activeIframe.src = article.url;
+            }
           } else {
             readerInline.style.display = '';
-            readerIframe.style.display = 'none';
+            readerOriginalShell.style.display = 'none';
             readerInlineBody.innerHTML = article.reader_html || '';
           }
-          readerIframe.title = article.title;
         }
         if (publishArticleId) publishArticleId.value = String(article.id);
         if (publishReturnTo) publishReturnTo.value = article.return_to;
@@ -1346,6 +1366,7 @@
       var readerToggleLink = document.querySelector('[data-reader-toggle-link]');
       var readerOpenLink = document.querySelector('[data-reader-open-link]');
       var readerArchiveForm = document.querySelector('[data-reader-archive-form]');
+      var readerOriginalShell = document.querySelector('[data-reader-original-shell]');
       var readerIframe = document.querySelector('[data-reader-iframe]');
       var readerInline = document.querySelector('[data-reader-inline]');
       var readerInlineBody = document.querySelector('[data-reader-inline-body]');
@@ -1386,17 +1407,24 @@
             if (readerToggleLink) readerToggleLink.href = article.original_toggle_url;
             if (readerOpenLink) readerOpenLink.href = article.url;
             if (readerArchiveForm) readerArchiveForm.action = article.archive_url;
-            if (readerIframe && readerInline && readerInlineBody) {
+            if (readerOriginalShell && readerInline && readerInlineBody) {
               if (article.mode === 'original') {
-                readerIframe.style.display = '';
+                var activeIframe = readerOriginalShell.querySelector('[data-reader-iframe]');
+                if (!activeIframe) {
+                  activeIframe = document.createElement('iframe');
+                  activeIframe.className = 'inbox__iframe';
+                  activeIframe.setAttribute('data-reader-iframe', '');
+                  readerOriginalShell.appendChild(activeIframe);
+                }
+                readerOriginalShell.style.display = '';
                 readerInline.style.display = 'none';
-                readerIframe.src = article.url;
+                activeIframe.src = article.url;
+                activeIframe.title = article.title;
               } else {
                 readerInline.style.display = '';
-                readerIframe.style.display = 'none';
+                readerOriginalShell.style.display = 'none';
                 readerInlineBody.innerHTML = article.reader_html || '';
               }
-              readerIframe.title = article.title;
             }
             if (publishArticleId) publishArticleId.value = String(article.id);
             if (publishReturnTo) publishReturnTo.value = article.return_to;
