@@ -20,6 +20,10 @@
         --field: #ffffff;
         --shadow: rgba(11, 93, 30, 0.12);
         --shadow-soft: rgba(11, 93, 30, 0.06);
+        --app-header-height: 68px;
+        --app-main-gutter: 28px;
+        --app-main-top-gap: 12px;
+        --app-main-bottom-gap: 40px;
       }
       * { box-sizing: border-box; }
       body {
@@ -52,11 +56,12 @@
         position: sticky;
         top: 0;
         z-index: 10;
+        min-height: var(--app-header-height);
       }
       main {
         max-width: 1560px;
-        margin: 12px auto 40px;
-        padding: 0 28px;
+        margin: var(--app-main-top-gap) auto var(--app-main-bottom-gap);
+        padding: 0 var(--app-main-gutter);
       }
       .main--bare {
         max-width: 680px;
@@ -331,6 +336,12 @@
         display: inline;
       }
       @media (max-width: 900px) {
+        :root {
+          --app-header-height: 76px;
+          --app-main-gutter: 16px;
+          --app-main-top-gap: 14px;
+          --app-main-bottom-gap: 32px;
+        }
         .topbar {
           align-items: center;
         }
