@@ -537,8 +537,21 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--ink);
       text-decoration: none;
       line-height: 1.1;
+      cursor: pointer;
+      transition: background 120ms ease, transform 120ms ease, border-color 120ms ease, color 120ms ease;
+    }
+    .reader-mode-link:hover {
+      background: rgba(246, 251, 243, 0.92);
+      border-color: var(--accent);
+      color: var(--ink);
+      transform: translateY(-1px);
     }
     .reader-mode-link.is-active {
       color: #fff;
