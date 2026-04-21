@@ -537,21 +537,8 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 7px 10px;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      color: var(--ink);
       text-decoration: none;
-      background: transparent;
-      font-size: inherit;
       line-height: 1.1;
-      transition: background 120ms ease, transform 120ms ease, border-color 120ms ease, color 120ms ease;
-    }
-    .reader-mode-link:hover {
-      background: rgba(246, 251, 243, 0.92);
-      border-color: var(--accent);
-      color: var(--ink);
-      transform: translateY(-1px);
     }
     .reader-mode-link.is-active {
       color: #fff;
@@ -920,24 +907,24 @@
                     <span class="reader-mode-links">
                       <a
                         href="{{ selected.mode_urls.feed|default(base_path ~ '/articles?' ~ (active_feed_id ? 'feed_id=' ~ active_feed_id ~ '&' : '') ~ 'selected=' ~ selected.id ~ '&mode=feed&density=' ~ density ~ '&layout=' ~ layout) }}"
-                        class="reader-mode-link{% if mode == 'feed' %} is-active{% endif %}{% if selected.available_modes.feed is defined and not selected.available_modes.feed %} is-disabled{% endif %}"
+                        class="reader-mode-link button-secondary{% if mode == 'feed' %} is-active{% endif %}{% if selected.available_modes.feed is defined and not selected.available_modes.feed %} is-disabled{% endif %}"
                         data-reader-mode-link
                         data-mode-link="feed"
                       >Feed</a>
                       <a
                         href="{{ selected.mode_urls.extracted|default(base_path ~ '/articles?' ~ (active_feed_id ? 'feed_id=' ~ active_feed_id ~ '&' : '') ~ 'selected=' ~ selected.id ~ '&mode=extracted&density=' ~ density ~ '&layout=' ~ layout) }}"
-                        class="reader-mode-link{% if mode == 'extracted' %} is-active{% endif %}{% if selected.available_modes.extracted is defined and not selected.available_modes.extracted %} is-disabled{% endif %}"
+                        class="reader-mode-link button-secondary{% if mode == 'extracted' %} is-active{% endif %}{% if selected.available_modes.extracted is defined and not selected.available_modes.extracted %} is-disabled{% endif %}"
                         data-reader-mode-link
                         data-mode-link="extracted"
                       >Extracted</a>
                       <a
                         href="{{ selected.mode_urls.original|default(base_path ~ '/articles?' ~ (active_feed_id ? 'feed_id=' ~ active_feed_id ~ '&' : '') ~ 'selected=' ~ selected.id ~ '&mode=original&density=' ~ density ~ '&layout=' ~ layout) }}"
-                        class="reader-mode-link{% if mode == 'original' %} is-active{% endif %}"
+                        class="reader-mode-link button-secondary{% if mode == 'original' %} is-active{% endif %}"
                         data-reader-mode-link
                         data-mode-link="original"
                       >Original</a>
                     </span>
-                    <a href="{{ selected.url }}" target="_blank" rel="noopener" class="reader-mode-link" data-reader-open-link>Open</a>
+                    <a href="{{ selected.url }}" target="_blank" rel="noopener" class="reader-mode-link button-secondary" data-reader-open-link>Open</a>
                     <form method="post" action="{{ base_path }}/articles/{{ selected.id }}/archive" class="inline-form" data-reader-archive-form>
                       <input type="hidden" name="_csrf" value="{{ csrf }}" />
                       <button type="submit" class="button-secondary">Archive</button>
