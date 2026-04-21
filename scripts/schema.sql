@@ -11,8 +11,10 @@ CREATE TABLE IF NOT EXISTS feeds (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     url TEXT NOT NULL UNIQUE,
+    folder_name TEXT NULL,
     is_active INTEGER NOT NULL DEFAULT 1,
     last_fetched_at TEXT NULL,
+    last_fetch_error TEXT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

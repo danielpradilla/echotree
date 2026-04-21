@@ -4,10 +4,22 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/article_extractor.php';
 
-function update_feed_last_fetched_at(PDO $pdo, int $feedId): void
+function update_feed_fetch_state(PDO $pdo, int $feedId, ?string $lastFetchError = null, bool $touchLastFetchedAt = true): void
 {
-    $update = $pdo->prepare("UPDATE feeds SET last_fetched_at = datetime('now') WHERE id = :id");
-    $update->execute([':id' => $feedId]);
+    if ($touchLastFetchedAt) {
+        $update = $pdo->prepare(
+            "UPDATE feeds SET last_fetched_at = datetime('now'), last_fetch_error = :last_fetch_error WHERE id = :id"
+        );
+    } else {
+        $update = $pdo->prepare(
+            'UPDATE feeds SET last_fetch_error = :last_fetch_error WHERE id = :id'
+        );
+    }
+
+    $update->execute([
+        ':id' => $feedId,
+        ':last_fetch_error' => $lastFetchError,
+    ]);
 }
 
 function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): array
@@ -82,17 +94,23 @@ function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): arra
 
         if (!$sp->init()) {
             $feedReport['status'] = 'parse_failed';
+            $error = trim((string) $sp->error());
+            if ($error === '') {
+                $error = 'Unknown feed parsing error.';
+            }
+            $feedReport['error'] = $error;
             $report['summary']['failed']++;
             $report['feeds'][] = $feedReport;
+            update_feed_fetch_state($pdo, $feedId, $error, false);
             if ($log) {
-                $log("  Failed to parse feed: {$feedUrl}\n");
+                $log("  Failed to parse feed: {$feedUrl} ({$error})\n");
             }
             continue;
         }
 
         $items = $sp->get_items();
         if (!$items) {
-            update_feed_last_fetched_at($pdo, $feedId);
+            update_feed_fetch_state($pdo, $feedId);
             $feedReport['status'] = 'empty';
             $report['summary']['checked']++;
             $report['summary']['empty']++;
@@ -191,7 +209,7 @@ function fetch_feeds(PDO $pdo, array $options = [], ?callable $log = null): arra
             $count++;
         }
 
-        update_feed_last_fetched_at($pdo, $feedId);
+        update_feed_fetch_state($pdo, $feedId);
         $report['summary']['checked']++;
         if ($feedReport['added'] > 0) {
             $feedReport['status'] = 'added';

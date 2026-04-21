@@ -50,6 +50,8 @@ function auto_init_schema(PDO $pdo, string $baseDir): void
 
 function ensure_runtime_schema(PDO $pdo): void
 {
+    ensure_feeds_schema($pdo);
+
     $pdo->exec(
         "CREATE TABLE IF NOT EXISTS share_history ("
         . "id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -73,4 +75,18 @@ function ensure_runtime_schema(PDO $pdo): void
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_share_history_shared_at ON share_history(shared_at)');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_share_history_url ON share_history(url)');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_share_history_post_id ON share_history(post_id)');
+}
+
+function ensure_feeds_schema(PDO $pdo): void
+{
+    $columns = $pdo->query("PRAGMA table_info(feeds)")->fetchAll();
+    $columnNames = array_map(static fn (array $column): string => (string) ($column['name'] ?? ''), $columns);
+
+    if (!in_array('folder_name', $columnNames, true)) {
+        $pdo->exec('ALTER TABLE feeds ADD COLUMN folder_name TEXT NULL');
+    }
+
+    if (!in_array('last_fetch_error', $columnNames, true)) {
+        $pdo->exec('ALTER TABLE feeds ADD COLUMN last_fetch_error TEXT NULL');
+    }
 }

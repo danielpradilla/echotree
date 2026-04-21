@@ -21,6 +21,10 @@
         URL
         <input id="feed-url" type="url" name="url" value="{{ feed.url }}" required />
       </label>
+      <label>
+        Folder
+        <input type="text" name="folder_name" value="{{ feed.folder_name|default('') }}" placeholder="Optional folder, like Tech or Markets" />
+      </label>
       <div class="muted" id="feed-title-status" style="font-size: 12px; min-height: 18px;"></div>
       <label class="checkbox-row">
         <input type="checkbox" name="is_active" {% if feed.is_active %}checked{% endif %} />

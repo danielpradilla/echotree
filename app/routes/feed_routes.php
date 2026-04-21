@@ -102,31 +102,38 @@ function parse_opml_feeds(string $xml): array
     }
 
     $xpath = new DOMXPath($dom);
-    $nodes = $xpath->query('//outline[@xmlUrl]');
-    if (!($nodes instanceof DOMNodeList) || $nodes->length === 0) {
+    $bodyNodes = $xpath->query('/opml/body');
+    $body = ($bodyNodes instanceof DOMNodeList && $bodyNodes->length > 0) ? $bodyNodes->item(0) : null;
+    if (!($body instanceof DOMElement)) {
         throw new RuntimeException('No feeds were found in the OPML file.');
     }
 
     $feeds = [];
-    foreach ($nodes as $node) {
-        if (!($node instanceof DOMElement)) {
-            continue;
+    $walk = static function (DOMElement $node, ?string $folderName) use (&$walk, &$feeds): void {
+        foreach ($node->childNodes as $child) {
+            if (!($child instanceof DOMElement) || strtolower($child->tagName) !== 'outline') {
+                continue;
+            }
+
+            $url = trim((string) $child->getAttribute('xmlUrl'));
+            $title = trim((string) $child->getAttribute('title'));
+            $text = trim((string) $child->getAttribute('text'));
+            $label = $title !== '' ? $title : $text;
+
+            if ($url !== '' && filter_var($url, FILTER_VALIDATE_URL)) {
+                $feeds[$url] = [
+                    'name' => $label !== '' ? $label : $url,
+                    'url' => $url,
+                    'folder_name' => $folderName,
+                ];
+                continue;
+            }
+
+            $nextFolder = $label !== '' ? $label : $folderName;
+            $walk($child, $nextFolder);
         }
-
-        $url = trim((string) $node->getAttribute('xmlUrl'));
-        if ($url === '' || !filter_var($url, FILTER_VALIDATE_URL)) {
-            continue;
-        }
-
-        $title = trim((string) $node->getAttribute('title'));
-        $text = trim((string) $node->getAttribute('text'));
-        $name = $title !== '' ? $title : ($text !== '' ? $text : $url);
-
-        $feeds[$url] = [
-            'name' => $name,
-            'url' => $url,
-        ];
-    }
+    };
+    $walk($body, null);
 
     if (count($feeds) === 0) {
         throw new RuntimeException('The OPML file did not contain any valid feed URLs.');
@@ -138,7 +145,7 @@ function parse_opml_feeds(string $xml): array
 function import_opml_feeds(PDO $pdo, array $feeds): array
 {
     $insert = $pdo->prepare(
-        'INSERT INTO feeds (name, url, is_active) VALUES (:name, :url, :is_active)'
+        'INSERT INTO feeds (name, url, folder_name, is_active) VALUES (:name, :url, :folder_name, :is_active)'
     );
     $exists = $pdo->prepare('SELECT id FROM feeds WHERE url = :url');
 
@@ -148,6 +155,7 @@ function import_opml_feeds(PDO $pdo, array $feeds): array
     foreach ($feeds as $feed) {
         $url = (string) ($feed['url'] ?? '');
         $name = trim((string) ($feed['name'] ?? ''));
+        $folderName = trim((string) ($feed['folder_name'] ?? ''));
         if ($url === '') {
             $skipped++;
             continue;
@@ -162,6 +170,7 @@ function import_opml_feeds(PDO $pdo, array $feeds): array
         $insert->execute([
             ':name' => $name !== '' ? $name : $url,
             ':url' => $url,
+            ':folder_name' => $folderName !== '' ? $folderName : null,
             ':is_active' => 1,
         ]);
         $imported++;
@@ -192,7 +201,11 @@ function register_feed_routes(App $app): void
 
     $app->get('/feeds', function ($request, $response) {
         $pdo = db_connection();
-        $stmt = $pdo->query('SELECT * FROM feeds ORDER BY name ASC');
+        $stmt = $pdo->query(
+            "SELECT * FROM feeds "
+            . "ORDER BY CASE WHEN TRIM(COALESCE(folder_name, '')) = '' THEN 1 ELSE 0 END ASC, "
+            . "LOWER(COALESCE(folder_name, '')) ASC, LOWER(name) ASC"
+        );
         $feeds = $stmt->fetchAll();
         $feeds = array_map(static function (array $feed): array {
             $feed['is_stale'] = is_feed_stale((string) ($feed['last_fetched_at'] ?? ''));
@@ -272,13 +285,14 @@ function register_feed_routes(App $app): void
             $data = (array) $request->getParsedBody();
             $name = trim((string) ($data['name'] ?? ''));
             $url = trim((string) ($data['url'] ?? ''));
+            $folderName = trim((string) ($data['folder_name'] ?? ''));
             $isActive = isset($data['is_active']) ? 1 : 0;
 
             if ($url === '') {
                 return $view->render($response, 'feeds/form.twig', [
                     'title' => 'New Feed',
                     'error' => 'URL is required.',
-                    'feed' => ['name' => $name, 'url' => $url, 'is_active' => $isActive],
+                    'feed' => ['name' => $name, 'url' => $url, 'folder_name' => $folderName, 'is_active' => $isActive],
                     'action' => '/feeds/new',
                     'csrf' => csrf_token(),
                     'base_path' => base_path($request),
@@ -289,7 +303,7 @@ function register_feed_routes(App $app): void
                 return $view->render($response, 'feeds/form.twig', [
                     'title' => 'New Feed',
                     'error' => 'URL must be valid.',
-                    'feed' => ['name' => $name, 'url' => $url, 'is_active' => $isActive],
+                    'feed' => ['name' => $name, 'url' => $url, 'folder_name' => $folderName, 'is_active' => $isActive],
                     'action' => '/feeds/new',
                     'csrf' => csrf_token(),
                     'base_path' => base_path($request),
@@ -306,7 +320,7 @@ function register_feed_routes(App $app): void
                 return $view->render($response, 'feeds/form.twig', [
                     'title' => 'New Feed',
                     'error' => 'This feed already exists: ' . (string) ($existingFeed['name'] ?? $url),
-                    'feed' => ['name' => $name, 'url' => $url, 'is_active' => $isActive],
+                    'feed' => ['name' => $name, 'url' => $url, 'folder_name' => $folderName, 'is_active' => $isActive],
                     'action' => '/feeds/new',
                     'csrf' => csrf_token(),
                     'base_path' => base_path($request),
@@ -314,11 +328,12 @@ function register_feed_routes(App $app): void
             }
 
             $stmt = $pdo->prepare(
-                'INSERT INTO feeds (name, url, is_active) VALUES (:name, :url, :is_active)'
+                'INSERT INTO feeds (name, url, folder_name, is_active) VALUES (:name, :url, :folder_name, :is_active)'
             );
             $stmt->execute([
                 ':name' => $name,
                 ':url' => $url,
+                ':folder_name' => $folderName !== '' ? $folderName : null,
                 ':is_active' => $isActive,
             ]);
 
@@ -329,7 +344,7 @@ function register_feed_routes(App $app): void
 
         return $view->render($response, 'feeds/form.twig', [
             'title' => 'New Feed',
-            'feed' => ['name' => '', 'url' => '', 'is_active' => 1],
+            'feed' => ['name' => '', 'url' => '', 'folder_name' => '', 'is_active' => 1],
             'action' => '/feeds/new',
             'csrf' => csrf_token(),
             'base_path' => base_path($request),
@@ -354,11 +369,13 @@ function register_feed_routes(App $app): void
             $data = (array) $request->getParsedBody();
             $name = trim((string) ($data['name'] ?? ''));
             $url = trim((string) ($data['url'] ?? ''));
+            $folderName = trim((string) ($data['folder_name'] ?? ''));
             $isActive = isset($data['is_active']) ? 1 : 0;
 
             if ($url === '') {
                 $feed['name'] = $name;
                 $feed['url'] = $url;
+                $feed['folder_name'] = $folderName;
                 $feed['is_active'] = $isActive;
                 return $view->render($response, 'feeds/form.twig', [
                     'title' => 'Edit Feed',
@@ -373,6 +390,7 @@ function register_feed_routes(App $app): void
             if (!filter_var($url, FILTER_VALIDATE_URL)) {
                 $feed['name'] = $name;
                 $feed['url'] = $url;
+                $feed['folder_name'] = $folderName;
                 $feed['is_active'] = $isActive;
                 return $view->render($response, 'feeds/form.twig', [
                     'title' => 'Edit Feed',
@@ -392,6 +410,7 @@ function register_feed_routes(App $app): void
             if ($existingFeed !== null) {
                 $feed['name'] = $name;
                 $feed['url'] = $url;
+                $feed['folder_name'] = $folderName;
                 $feed['is_active'] = $isActive;
                 return $view->render($response, 'feeds/form.twig', [
                     'title' => 'Edit Feed',
@@ -404,11 +423,12 @@ function register_feed_routes(App $app): void
             }
 
             $update = $pdo->prepare(
-                'UPDATE feeds SET name = :name, url = :url, is_active = :is_active WHERE id = :id'
+                'UPDATE feeds SET name = :name, url = :url, folder_name = :folder_name, is_active = :is_active WHERE id = :id'
             );
             $update->execute([
                 ':name' => $name,
                 ':url' => $url,
+                ':folder_name' => $folderName !== '' ? $folderName : null,
                 ':is_active' => $isActive,
                 ':id' => $feedId,
             ]);

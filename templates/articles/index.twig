@@ -3,7 +3,7 @@
 {% block content %}
   <style>
     .reader-page {
-      margin-top: -8px;
+      margin-top: -10px;
     }
     .reader-app {
       background: rgba(255, 255, 255, 0.72);
@@ -19,6 +19,9 @@
       line-height: 1.1;
     }
     .reader-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -163,40 +166,42 @@
     }
     .reader-shell {
       display: grid;
-      grid-template-columns: 220px 420px minmax(0, 1fr);
+      grid-template-columns: 260px minmax(340px, 32vw) minmax(0, 1fr);
       gap: 0;
       align-items: stretch;
+      min-height: calc(100vh - 126px);
     }
     .reader-panel {
       min-height: 0;
     }
     .reader-panel--nav,
     .reader-panel--stories {
-      max-height: calc(100vh - 175px);
+      max-height: calc(100vh - 126px);
       overflow: auto;
       background: rgba(245, 245, 239, 0.82);
       scrollbar-width: thin;
+      overscroll-behavior: contain;
     }
     .reader-panel--nav {
       border-right: 1px solid var(--line-soft);
-      padding: 12px 8px 14px;
+      padding: 10px 8px 14px;
     }
     .reader-panel--stories {
       border-right: 1px solid var(--line-soft);
-      padding: 12px 10px 14px;
+      padding: 10px 10px 14px;
       background: rgba(255, 255, 255, 0.92);
     }
     .reader-panel--main {
       background: rgba(255, 255, 255, 0.96);
-      padding: 12px 14px 16px;
+      padding: 8px 10px 10px;
       min-width: 0;
       overflow: hidden;
     }
     .reader-shell.is-nav-collapsed {
-      grid-template-columns: 0 420px minmax(0, 1fr);
+      grid-template-columns: 0 minmax(340px, 32vw) minmax(0, 1fr);
     }
     .reader-shell.is-stories-collapsed {
-      grid-template-columns: 220px 0 minmax(0, 1fr);
+      grid-template-columns: 260px 0 minmax(0, 1fr);
     }
     .reader-shell.is-nav-collapsed.is-stories-collapsed {
       grid-template-columns: minmax(0, 1fr);
@@ -238,7 +243,24 @@
     }
     .site-item {
       border-bottom: 0;
-      margin-bottom: 2px;
+      margin-bottom: 3px;
+    }
+    .site-group + .site-group {
+      margin-top: 16px;
+    }
+    .site-group__header {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      margin: 0 0 8px;
+      padding: 6px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: rgba(245, 245, 239, 0.95);
+      border-bottom: 1px solid var(--line-soft);
     }
     .site-link {
       display: grid !important;
@@ -279,7 +301,7 @@
     .story-item {
       border: 1px solid transparent;
       border-radius: 10px;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       background: rgba(255, 255, 255, 0.78);
     }
     .story-item.active {
@@ -316,7 +338,7 @@
     .story-card-link {
       display: grid !important;
       grid-template-columns: 92px minmax(0, 1fr);
-      gap: 12px;
+      gap: 10px;
       align-items: start;
     }
     .story-thumb {
@@ -386,9 +408,10 @@
     }
     .reader-stage {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 320px;
+      grid-template-columns: minmax(0, 1fr) 300px;
       gap: 0;
       align-items: start;
+      height: 100%;
     }
     .reader-stage__article {
       min-width: 0;
@@ -403,7 +426,7 @@
     }
     .inbox__iframe {
       width: 100%;
-      height: 72vh;
+      height: calc(100vh - 210px);
       border: 1px solid var(--border);
       border-radius: 14px;
       background: var(--card-solid);
@@ -422,6 +445,12 @@
       align-items: center;
       gap: 10px;
       margin-bottom: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding-bottom: 10px;
+      background: rgba(255, 255, 255, 0.94);
+      border-bottom: 1px solid var(--line-soft);
     }
     .inbox__meta {
       display: flex;
@@ -488,7 +517,7 @@
       font-size: 12px;
     }
     .reader-meta-card {
-      padding: 6px 14px 12px;
+      padding: 6px 4px 10px;
       border: 0;
       border-radius: 0;
       background: transparent;
@@ -619,21 +648,31 @@
         <div class="panel-head">
           <div class="panel-kicker">Sites</div>
         </div>
-        <div class="site-item {% if not active_feed_id %}active{% endif %}">
-          <a class="site-link" href="{{ base_path }}/articles?density={{ density }}&layout={{ layout }}">
-            <span class="site-favicon" aria-hidden="true"></span>
-            <div>
-              <div class="site-title-row">
-                <strong>All stories</strong>
-                <span class="count-pill">{{ articles|length }}</span>
+        <div class="site-group">
+          <div class="site-item {% if not active_feed_id %}active{% endif %}">
+            <a class="site-link" data-site-link href="{{ base_path }}/articles?{% if selected %}selected={{ selected.id }}&{% endif %}mode={{ mode }}&density={{ density }}&layout={{ layout }}">
+              <span class="site-favicon" aria-hidden="true"></span>
+              <div>
+                <div class="site-title-row">
+                  <strong>All stories</strong>
+                  <span class="count-pill">{{ articles|length }}</span>
+                </div>
+                <div class="muted" style="font-size: 12px;">Global river across every active site.</div>
               </div>
-              <div class="muted" style="font-size: 12px;">Global river across every active site.</div>
-            </div>
-          </a>
+            </a>
+          </div>
         </div>
+        {% set current_folder = null %}
         {% for feed in feeds %}
+          {% set folder_label = feed.folder_name ?: 'Unfiled' %}
+          {% if folder_label != current_folder %}
+            {% if not loop.first %}</div>{% endif %}
+            <div class="site-group">
+              <div class="site-group__header">{{ folder_label }}</div>
+            {% set current_folder = folder_label %}
+          {% endif %}
           <div class="site-item {% if active_feed_id == feed.id %}active{% endif %}">
-            <a class="site-link" href="{{ base_path }}/articles?feed_id={{ feed.id }}&density={{ density }}&layout={{ layout }}" style="box-shadow: inset 3px 0 0 {{ feed.accent_color }};">
+            <a class="site-link" data-site-link href="{{ base_path }}/articles?feed_id={{ feed.id }}{% if selected and selected.feed_id == feed.id %}&selected={{ selected.id }}{% endif %}&mode={{ mode }}&density={{ density }}&layout={{ layout }}" style="box-shadow: inset 3px 0 0 {{ feed.accent_color }};">
               {% if feed.favicon_url %}
                 <img class="site-favicon" src="{{ feed.favicon_url }}" alt="" loading="lazy" />
               {% else %}
@@ -655,6 +694,7 @@
               </div>
             </a>
           </div>
+          {% if loop.last %}</div>{% endif %}
         {% endfor %}
       </div>
 
@@ -875,6 +915,69 @@
 
   <script>
     (function () {
+      var storagePrefix = 'echotree.reader.';
+      var storiesPanel = document.querySelector('.reader-panel--stories');
+      var navPanel = document.querySelector('.reader-panel--nav');
+      var activeFeedId = {{ active_feed_id ?: 'null' }};
+      var activeStoryId = {{ selected ? selected.id : 'null' }};
+      var stateKey = storagePrefix + 'scroll.' + (activeFeedId || 'all');
+
+      function restoreScroll(panel, key) {
+        if (!panel) return false;
+        var value = window.sessionStorage.getItem(stateKey + '.' + key);
+        if (value === null) return false;
+        panel.scrollTop = parseInt(value, 10) || 0;
+        return true;
+      }
+
+      function persistScroll(panel, key) {
+        if (!panel) return;
+        panel.addEventListener('scroll', function () {
+          window.sessionStorage.setItem(stateKey + '.' + key, String(panel.scrollTop));
+        }, { passive: true });
+      }
+
+      persistScroll(navPanel, 'nav');
+      persistScroll(storiesPanel, 'stories');
+
+      var restoredNav = restoreScroll(navPanel, 'nav');
+      var restoredStories = restoreScroll(storiesPanel, 'stories');
+
+      if (!restoredNav) {
+        var activeSite = document.querySelector('.site-item.active');
+        if (navPanel && activeSite) {
+          window.requestAnimationFrame(function () {
+            var panelRect = navPanel.getBoundingClientRect();
+            var itemRect = activeSite.getBoundingClientRect();
+            if (itemRect.top < panelRect.top || itemRect.bottom > panelRect.bottom) {
+              activeSite.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            }
+          });
+        }
+      }
+
+      if (!restoredStories) {
+        var activeStory = document.querySelector('.story-item.active');
+        if (storiesPanel && activeStory) {
+          window.requestAnimationFrame(function () {
+            var panelRect = storiesPanel.getBoundingClientRect();
+            var itemRect = activeStory.getBoundingClientRect();
+            if (itemRect.top < panelRect.top || itemRect.bottom > panelRect.bottom) {
+              activeStory.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            }
+          });
+        }
+      }
+
+      if (activeFeedId !== null) {
+        window.sessionStorage.setItem(storagePrefix + 'activeFeed', String(activeFeedId));
+      }
+      if (activeStoryId !== null) {
+        window.sessionStorage.setItem(storagePrefix + 'activeStory', String(activeStoryId));
+      }
+    })();
+
+    (function () {
       var toggles = document.querySelectorAll('.inbox__toggle');
       var shell = document.querySelector('[data-reader-shell]');
       var panels = {
@@ -920,26 +1023,19 @@
     })();
 
     (function () {
-      var storiesPanel = document.querySelector('.reader-panel--stories');
-      var activeStory = document.querySelector('.story-item.active');
-      if (!storiesPanel || !activeStory) return;
-
-      window.requestAnimationFrame(function () {
-        var panelRect = storiesPanel.getBoundingClientRect();
-        var itemRect = activeStory.getBoundingClientRect();
-        var above = itemRect.top < panelRect.top;
-        var below = itemRect.bottom > panelRect.bottom;
-        if (above || below) {
-          activeStory.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-        }
-      });
-    })();
-
-    (function () {
       var mainPanel = document.getElementById('reader-main');
       var hasSelected = {{ selected ? 'true' : 'false' }};
       if (!mainPanel || !hasSelected) return;
       if (window.innerWidth > 900) return;
+
+      var navigationType = '';
+      try {
+        var entries = window.performance && window.performance.getEntriesByType ? window.performance.getEntriesByType('navigation') : [];
+        navigationType = entries && entries[0] ? entries[0].type : '';
+      } catch (error) {
+        navigationType = '';
+      }
+      if (navigationType === 'reload' || navigationType === 'back_forward') return;
 
       window.requestAnimationFrame(function () {
         mainPanel.scrollIntoView({ block: 'start', behavior: 'auto' });

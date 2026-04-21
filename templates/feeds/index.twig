@@ -47,6 +47,19 @@
       font-size: 12px;
       white-space: nowrap;
     }
+    .feeds-table__folder {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .feeds-table__error {
+      display: block;
+      margin-top: 6px;
+      font-size: 12px;
+      line-height: 1.35;
+      color: #b14b2d;
+      white-space: normal;
+    }
     .feeds-table__actions {
       width: 190px;
       vertical-align: top;
@@ -161,6 +174,7 @@
             <tr>
               <th>Name</th>
               <th>URL</th>
+              <th>Folder</th>
               <th>Active</th>
               <th>Last fetched</th>
               <th>Actions</th>
@@ -179,7 +193,11 @@
                 </td>
                 <td class="feeds-table__url">
                   <a href="{{ feed.url }}" target="_blank" rel="noopener">{{ feed.url }}</a>
+                  {% if feed.last_fetch_error %}
+                    <span class="feeds-table__error" title="{{ feed.last_fetch_error }}">Last error: {{ feed.last_fetch_error }}</span>
+                  {% endif %}
                 </td>
+                <td class="feeds-table__folder">{{ feed.folder_name ?: '—' }}</td>
                 <td>
                   <span class="status-pill">{{ feed.is_active ? 'Active' : 'Paused' }}</span>
                 </td>

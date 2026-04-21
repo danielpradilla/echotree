@@ -82,14 +82,15 @@ function extract_first_image_url(string $html): ?string
 function list_feed_navigation(PDO $pdo): array
 {
     $stmt = $pdo->prepare(
-        'SELECT f.id, f.name, f.url, f.is_active, '
+        'SELECT f.id, f.name, f.url, f.folder_name, f.is_active, f.last_fetched_at, '
         . 'COUNT(a.id) AS article_count, '
         . 'SUM(CASE WHEN a.is_read = 0 THEN 1 ELSE 0 END) AS unread_count '
         . 'FROM feeds f '
         . 'LEFT JOIN articles a ON a.feed_id = f.id '
         . 'WHERE f.url != :manual_url '
-        . 'GROUP BY f.id, f.name, f.url, f.is_active '
-        . 'ORDER BY LOWER(f.name) ASC'
+        . 'GROUP BY f.id, f.name, f.url, f.folder_name, f.is_active, f.last_fetched_at '
+        . "ORDER BY CASE WHEN TRIM(COALESCE(f.folder_name, '')) = '' THEN 1 ELSE 0 END ASC, "
+        . 'LOWER(COALESCE(f.folder_name, \'\')) ASC, LOWER(f.name) ASC'
     );
     $stmt->execute([':manual_url' => 'manual://local']);
 
@@ -98,6 +99,7 @@ function list_feed_navigation(PDO $pdo): array
         $row['article_count'] = (int) ($row['article_count'] ?? 0);
         $row['unread_count'] = (int) ($row['unread_count'] ?? 0);
         $row['is_active'] = (int) ($row['is_active'] ?? 0);
+        $row['folder_name'] = trim((string) ($row['folder_name'] ?? ''));
         $row['host'] = $host;
         $row['favicon_url'] = favicon_url_for_host($host);
         $row['accent_color'] = accent_color_for_host($host);
