@@ -773,8 +773,8 @@
           <div class="story-list {% if density == 'compact' %}story-list--compact{% endif %} {% if layout == 'grid' %}story-list--grid{% elseif layout == 'magazine' %}story-list--magazine{% endif %}">
             {% for article in articles %}
               {% set is_selected = selected and selected.id == article.id %}
-              <div class="story-item {% if is_selected %}active{% endif %}" {% if is_selected %}style="border-color: {{ article.accent_color }}; box-shadow: 0 10px 24px rgba(11, 93, 30, 0.06);"{% endif %}>
-                <a class="story-card-link" data-story-link href="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ article.id }}&mode={{ mode }}&density={{ density }}&layout={{ layout }}">
+              <div class="story-item {% if is_selected %}active{% endif %}" data-story-item data-article-id="{{ article.id }}" data-accent-color="{{ article.accent_color }}" {% if is_selected %}style="border-color: {{ article.accent_color }}; box-shadow: 0 10px 24px rgba(11, 93, 30, 0.06);"{% endif %}>
+                <a class="story-card-link" data-story-link data-article-id="{{ article.id }}" href="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ article.id }}&mode={{ mode }}&density={{ density }}&layout={{ layout }}">
                   <div class="story-thumb {% if density == 'compact' %}story-thumb--compact{% endif %}">
                     {% if article.thumbnail_url %}
                       <img src="{{ article.thumbnail_url }}" alt="" loading="lazy" />
@@ -1085,11 +1085,136 @@
       var storyLinks = Array.prototype.slice.call(document.querySelectorAll('[data-story-link]'));
       if (!storyLinks.length) return;
 
+      var selectedFeedId = {{ active_feed_id ?: 'null' }};
+      var mode = '{{ mode }}';
+      var density = '{{ density }}';
+      var layout = '{{ layout }}';
+      var basePath = '{{ base_path }}';
+      var readerTitle = document.querySelector('[data-reader-title]');
+      var readerFavicon = document.querySelector('[data-reader-favicon]');
+      var readerAccent = document.querySelector('[data-reader-accent]');
+      var readerFeedName = document.querySelector('[data-reader-feed-name]');
+      var readerFeedHost = document.querySelector('[data-reader-feed-host]');
+      var readerToggleLink = document.querySelector('[data-reader-toggle-link]');
+      var readerOpenLink = document.querySelector('[data-reader-open-link]');
+      var readerArchiveForm = document.querySelector('[data-reader-archive-form]');
+      var readerIframe = document.querySelector('[data-reader-iframe]');
+      var publishTitle = document.querySelector('[data-publish-title]');
+      var publishArticleId = document.querySelector('[data-publish-article-id]');
+      var publishReturnTo = document.querySelector('[data-publish-return-to]');
+      var generateButton = document.querySelector('[data-generate-comment]');
+      var commentTextarea = document.getElementById('article-comment');
+      var commentLength = document.getElementById('article-comment-length');
+      var storyItems = Array.prototype.slice.call(document.querySelectorAll('[data-story-item]'));
+      var requestId = 0;
+
+      function updateActiveStory(articleId) {
+        storyItems.forEach(function (item) {
+          var isActive = String(articleId) === item.getAttribute('data-article-id');
+          item.classList.toggle('active', isActive);
+          if (isActive) {
+            var accent = item.getAttribute('data-accent-color') || '#84b316';
+            item.style.borderColor = accent;
+            item.style.boxShadow = '0 10px 24px rgba(11, 93, 30, 0.06)';
+          } else {
+            item.style.borderColor = '';
+            item.style.boxShadow = '';
+          }
+        });
+      }
+
+      function applyArticle(article, href, replaceHistory) {
+        if (!article) return;
+        if (readerTitle) readerTitle.textContent = article.title;
+        if (publishTitle) publishTitle.textContent = article.title;
+        if (readerFeedName) readerFeedName.textContent = article.feed_name || '';
+        if (readerFeedHost) readerFeedHost.textContent = article.feed_host || '';
+        if (readerAccent) readerAccent.style.background = article.accent_color || '#84b316';
+        if (readerFavicon) {
+          if (article.favicon_url) {
+            readerFavicon.src = article.favicon_url;
+            readerFavicon.style.display = '';
+          } else {
+            readerFavicon.removeAttribute('src');
+            readerFavicon.style.display = 'none';
+          }
+        }
+        if (readerToggleLink) readerToggleLink.href = article.original_toggle_url;
+        if (readerOpenLink) readerOpenLink.href = article.url;
+        if (readerArchiveForm) readerArchiveForm.action = article.archive_url;
+        if (readerIframe) {
+          readerIframe.src = article.mode === 'original' ? article.url : article.embed_url;
+          readerIframe.title = article.title;
+        }
+        if (publishArticleId) publishArticleId.value = String(article.id);
+        if (publishReturnTo) publishReturnTo.value = article.return_to;
+        if (generateButton) generateButton.setAttribute('data-article-id', String(article.id));
+        if (commentTextarea) commentTextarea.value = '';
+        if (commentLength) commentLength.textContent = '0';
+
+        updateActiveStory(article.id);
+
+        if (href && window.history) {
+          var method = replaceHistory ? 'replaceState' : 'pushState';
+          if (typeof window.history[method] === 'function') {
+            window.history[method]({ articleId: article.id }, '', href);
+          }
+        }
+      }
+
+      function fetchAndApplyStory(link, replaceHistory) {
+        if (!link) return Promise.resolve();
+        var articleId = parseInt(link.getAttribute('data-article-id') || '0', 10);
+        if (!articleId) {
+          window.location.href = link.href;
+          return Promise.resolve();
+        }
+
+        requestId += 1;
+        var currentRequestId = requestId;
+        updateActiveStory(articleId);
+
+        var params = new URLSearchParams();
+        params.set('selected', String(articleId));
+        params.set('mode', mode);
+        params.set('density', density);
+        params.set('layout', layout);
+        if (selectedFeedId) {
+          params.set('feed_id', String(selectedFeedId));
+        }
+
+        return fetch(basePath + '/articles/selected?' + params.toString(), {
+          headers: { 'Accept': 'application/json' }
+        })
+          .then(function (res) {
+            if (!res.ok) throw new Error('article_fetch_failed');
+            return res.json();
+          })
+          .then(function (payload) {
+            if (currentRequestId !== requestId) return;
+            if (!payload || !payload.ok || !payload.article) throw new Error('article_fetch_failed');
+            applyArticle(payload.article, link.href, replaceHistory);
+          })
+          .catch(function () {
+            window.location.href = link.href;
+          });
+      }
+
       function isTypingTarget(node) {
         if (!node) return false;
         var tag = (node.tagName || '').toLowerCase();
         return tag === 'input' || tag === 'textarea' || tag === 'select' || node.isContentEditable;
       }
+
+      storyLinks.forEach(function (link) {
+        link.addEventListener('click', function (event) {
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+            return;
+          }
+          event.preventDefault();
+          fetchAndApplyStory(link, false);
+        });
+      });
 
       document.addEventListener('keydown', function (event) {
         if (event.defaultPrevented || isTypingTarget(event.target)) return;
@@ -1107,7 +1232,23 @@
         if (nextIndex < 0 || nextIndex >= storyLinks.length) return;
 
         event.preventDefault();
-        window.location.href = storyLinks[nextIndex].href;
+        fetchAndApplyStory(storyLinks[nextIndex], false);
+      });
+
+      window.addEventListener('popstate', function () {
+        var currentUrl = new URL(window.location.href);
+        var selected = parseInt(currentUrl.searchParams.get('selected') || '0', 10);
+        if (!selected) return;
+
+        var matchingLink = storyLinks.find(function (link) {
+          return String(selected) === link.getAttribute('data-article-id');
+        });
+
+        if (matchingLink) {
+          fetchAndApplyStory(matchingLink, true);
+        } else {
+          window.location.reload();
+        }
       });
     })();
 

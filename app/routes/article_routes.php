@@ -246,14 +246,27 @@ function upsert_manual_article_from_url(PDO $pdo, string $url): ?int
     return (int) $pdo->lastInsertId();
 }
 
-function article_reader_payload(array $article, string $mode, string $density, string $layout, string $basePath): array
+function article_reader_payload(array $article, string $mode, string $density, string $layout, string $basePath, ?int $feedId = null): array
 {
     $safeMode = $mode === 'original' ? 'original' : 'reader';
     $safeDensity = $density === 'compact' ? 'compact' : 'comfortable';
     $safeLayout = in_array($layout, ['split', 'magazine', 'grid'], true) ? $layout : 'split';
+    $baseQuery = [
+        'selected' => (int) $article['id'],
+        'mode' => $safeMode,
+        'density' => $safeDensity,
+        'layout' => $safeLayout,
+    ];
+    if ($feedId !== null && $feedId > 0) {
+        $baseQuery['feed_id'] = $feedId;
+    }
+
+    $toggleQuery = $baseQuery;
+    $toggleQuery['mode'] = $safeMode === 'reader' ? 'original' : 'reader';
 
     return [
         'id' => (int) $article['id'],
+        'feed_id' => (int) ($article['feed_id'] ?? 0),
         'title' => (string) $article['title'],
         'url' => (string) $article['url'],
         'feed_name' => (string) ($article['feed_name'] ?? ''),
@@ -268,19 +281,9 @@ function article_reader_payload(array $article, string $mode, string $density, s
             'density' => $safeDensity,
             'layout' => $safeLayout,
         ]),
-        'original_toggle_url' => $basePath . '/articles?' . http_build_query([
-            'selected' => (int) $article['id'],
-            'mode' => $safeMode === 'reader' ? 'original' : 'reader',
-            'density' => $safeDensity,
-            'layout' => $safeLayout,
-        ]),
+        'original_toggle_url' => $basePath . '/articles?' . http_build_query($toggleQuery),
         'archive_url' => $basePath . '/articles/' . (int) $article['id'] . '/archive',
-        'return_to' => $basePath . '/articles?' . http_build_query([
-            'selected' => (int) $article['id'],
-            'mode' => $safeMode,
-            'density' => $safeDensity,
-            'layout' => $safeLayout,
-        ]),
+        'return_to' => $basePath . '/articles?' . http_build_query($baseQuery),
     ];
 }
 
@@ -382,6 +385,38 @@ function register_article_routes(App $app): void
     };
     $app->post('/articles/archive-all', $archiveAll);
     $app->post('/articles/mark-all-read', $archiveAll);
+
+    $app->get('/articles/selected', function ($request, $response) {
+        $pdo = db_connection();
+        $queryParams = $request->getQueryParams();
+        $selectedId = isset($queryParams['selected']) ? (int) $queryParams['selected'] : 0;
+        $feedId = isset($queryParams['feed_id']) ? (int) $queryParams['feed_id'] : null;
+        $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'reader';
+        $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'comfortable';
+        $layout = isset($queryParams['layout']) ? (string) $queryParams['layout'] : 'split';
+
+        if ($selectedId <= 0) {
+            $response->getBody()->write(json_encode(['ok' => false, 'error' => 'missing_selected']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+        }
+
+        $article = find_article_with_feed($pdo, $selectedId);
+        if ($article === null) {
+            $response->getBody()->write(json_encode(['ok' => false, 'error' => 'not_found']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+        }
+
+        if ($feedId && (int) ($article['feed_id'] ?? 0) !== $feedId) {
+            $response->getBody()->write(json_encode(['ok' => false, 'error' => 'feed_mismatch']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+        }
+
+        $response->getBody()->write(json_encode([
+            'ok' => true,
+            'article' => article_reader_payload($article, $mode, $density, $layout, base_path($request), $feedId),
+        ]));
+        return $response->withHeader('Content-Type', 'application/json');
+    });
 
     $app->get('/articles/follow', function ($request, $response) {
         $pdo = db_connection();
