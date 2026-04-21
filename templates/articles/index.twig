@@ -938,7 +938,7 @@
 
               <div class="reader-original" data-reader-original-shell {% if mode != 'original' %}style="display: none;"{% endif %}>
                 {% if mode == 'original' %}
-                  <iframe class="inbox__iframe" data-reader-iframe src="{{ selected.url }}" title="{{ selected.title }}"></iframe>
+                  <iframe class="inbox__iframe" data-reader-iframe src="{{ selected.original_embed_url|default(base_path ~ '/articles/' ~ selected.id ~ '/original') }}" title="{{ selected.title }}"></iframe>
                 {% endif %}
               </div>
               <div class="reader-inline" data-reader-inline {% if mode == 'original' %}style="display: none;"{% endif %}>
@@ -1261,7 +1261,7 @@
             readerOriginalShell.style.display = '';
             readerInline.style.display = 'none';
             if (activeIframe) {
-              activeIframe.src = article.url;
+              activeIframe.src = article.original_embed_url || (basePath + '/articles/' + article.id + '/original');
             }
           } else {
             readerInline.style.display = '';
@@ -1486,7 +1486,7 @@
                 }
                 readerOriginalShell.style.display = '';
                 readerInline.style.display = 'none';
-                activeIframe.src = article.url;
+                activeIframe.src = article.original_embed_url || (basePath + '/articles/' + article.id + '/original');
                 activeIframe.title = article.title;
               } else {
                 readerInline.style.display = '';

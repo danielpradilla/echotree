@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Slim\App;
 use Slim\Views\Twig;
+use GuzzleHttp\Client;
 
 function echotree_schedule_timezone_id(): string
 {
@@ -355,6 +356,7 @@ function article_reader_payload(array $article, string $mode, string $density, s
             'original' => true,
         ],
         'mode_urls' => $modeUrls,
+        'original_embed_url' => $basePath . '/articles/' . (int) $article['id'] . '/original',
         'embed_url' => $basePath . '/articles/' . (int) $article['id'] . '/embed?' . http_build_query([
             'mode' => $safeMode,
             'density' => $safeDensity,
@@ -457,6 +459,43 @@ function article_reader_body_html(array $article, ?string $requestedMode = null)
     }
 
     return $body;
+}
+
+function article_original_proxy_html(string $url, int $timeoutSeconds = 15): string
+{
+    if ($url === '' || !filter_var($url, FILTER_VALIDATE_URL)) {
+        return '';
+    }
+
+    try {
+        $client = new Client([
+            'timeout' => $timeoutSeconds,
+            'headers' => [
+                'User-Agent' => 'EchoTree/1.0 (+https://example.com)',
+            ],
+        ]);
+        $resp = $client->get($url);
+        $html = (string) $resp->getBody();
+    } catch (Throwable $e) {
+        return '';
+    }
+
+    if ($html === '') {
+        return '';
+    }
+
+    $baseHref = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
+    $baseTag = '<base href="' . $baseHref . '">';
+
+    if (stripos($html, '<head') !== false) {
+        $html = preg_replace('/<head([^>]*)>/i', '<head$1>' . $baseTag, $html, 1) ?? $html;
+    } else {
+        $html = '<head>' . $baseTag . '</head>' . $html;
+    }
+
+    $html = preg_replace('/<meta[^>]+http-equiv=["\']Content-Security-Policy["\'][^>]*>/i', '', $html) ?? $html;
+
+    return $html;
 }
 
 function register_article_routes(App $app): void
@@ -1075,6 +1114,37 @@ function register_article_routes(App $app): void
 
         $response->getBody()->write($html);
         return $response->withHeader('Content-Type', 'text/html');
+    });
+
+    $app->get('/articles/{id}/original', function ($request, $response, $args) {
+        $articleId = (int) ($args['id'] ?? 0);
+        $pdo = db_connection();
+
+        $stmt = $pdo->prepare('SELECT title, url FROM articles WHERE id = :id');
+        $stmt->execute([':id' => $articleId]);
+        $article = $stmt->fetch();
+
+        if (!$article) {
+            return $response->withStatus(404);
+        }
+
+        $html = article_original_proxy_html((string) ($article['url'] ?? ''));
+        if ($html === '') {
+            $safeTitle = htmlspecialchars((string) ($article['title'] ?? 'Original article'), ENT_QUOTES, 'UTF-8');
+            $safeUrl = htmlspecialchars((string) ($article['url'] ?? ''), ENT_QUOTES, 'UTF-8');
+            $html = '<!doctype html><html><head><meta charset="utf-8" />'
+                . '<meta name="viewport" content="width=device-width, initial-scale=1" />'
+                . '<style>body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;'
+                . 'margin:0;padding:32px;line-height:1.6;color:#1f2b1f;background:#f7f8f3;}'
+                . '.card{max-width:720px;margin:0 auto;padding:24px;border:1px solid #d7ddd1;border-radius:16px;background:#fff;}'
+                . 'a{color:#0b5d1e;}</style></head><body><div class="card"><h1>' . $safeTitle . '</h1>'
+                . '<p>This site cannot be rendered inline right now.</p>'
+                . '<p><a href="' . $safeUrl . '" target="_blank" rel="noopener">Open the original site</a></p>'
+                . '</div></body></html>';
+        }
+
+        $response->getBody()->write($html);
+        return $response->withHeader('Content-Type', 'text/html; charset=utf-8');
     });
 
     $app->post('/posts', function ($request, $response) {
