@@ -506,7 +506,7 @@ function register_article_routes(App $app): void
         $feedId = isset($queryParams['feed_id']) ? (int) $queryParams['feed_id'] : null;
         $selectedId = isset($queryParams['selected']) ? (int) $queryParams['selected'] : null;
         $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'auto';
-        $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'comfortable';
+        $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'compact';
         $layout = isset($queryParams['layout']) ? (string) $queryParams['layout'] : 'split';
 
         $feeds = list_feed_navigation($pdo);
@@ -617,7 +617,7 @@ function register_article_routes(App $app): void
         $selectedId = isset($queryParams['selected']) ? (int) $queryParams['selected'] : 0;
         $feedId = isset($queryParams['feed_id']) ? (int) $queryParams['feed_id'] : null;
         $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'auto';
-        $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'comfortable';
+        $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'compact';
         $layout = isset($queryParams['layout']) ? (string) $queryParams['layout'] : 'split';
 
         if ($selectedId <= 0) {
@@ -648,7 +648,7 @@ function register_article_routes(App $app): void
         $queryParams = $request->getQueryParams();
         $url = trim((string) ($queryParams['url'] ?? ''));
         $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'auto';
-        $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'comfortable';
+        $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'compact';
         $layout = isset($queryParams['layout']) ? (string) $queryParams['layout'] : 'split';
         $format = isset($queryParams['format']) ? (string) $queryParams['format'] : '';
 
@@ -1067,7 +1067,7 @@ function register_article_routes(App $app): void
         $pdo = db_connection();
         $queryParams = $request->getQueryParams();
         $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'auto';
-        $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'comfortable';
+        $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'compact';
         $layout = isset($queryParams['layout']) ? (string) $queryParams['layout'] : 'split';
 
         $stmt = $pdo->prepare(
