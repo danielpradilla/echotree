@@ -26,8 +26,9 @@
     }
     .feeds-table th,
     .feeds-table td {
-      padding: 10px 12px;
-      font-size: 14px;
+      padding: 8px 10px;
+      font-size: 13px;
+      vertical-align: middle;
     }
     .feeds-table th {
       font-size: 12px;
@@ -83,26 +84,28 @@
       white-space: normal;
     }
     .feeds-table__actions {
-      width: 190px;
-      vertical-align: top;
+      width: 1%;
+      white-space: nowrap;
     }
     .feeds-table__actions-row {
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       justify-content: flex-end;
-      gap: 8px 6px;
+      align-items: center;
+      gap: 6px;
     }
     .feeds-table__actions-row a,
     .feeds-table__actions-row button {
-      font-size: 12px;
+      font-size: 11px;
       line-height: 1.1;
-      min-height: 30px;
+      min-height: 26px;
+      white-space: nowrap;
     }
     .feeds-table__actions-row a {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 6px 10px;
+      padding: 4px 8px;
       border: 1px solid var(--border-color);
       border-radius: 999px;
       text-decoration: none;
@@ -111,7 +114,7 @@
     }
     .feeds-table__actions-row button {
       width: auto;
-      padding: 6px 10px;
+      padding: 4px 8px;
       border-radius: 999px;
     }
     .feeds-table__actions-row form {
