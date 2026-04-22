@@ -519,19 +519,37 @@
       margin-bottom: 10px;
       flex-wrap: wrap;
     }
-    .story-toolbar {
+    .reader-header-band {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
+      gap: 12px;
+      min-height: 62px;
+      padding: 4px 0 10px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .reader-header-band__main {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+    }
+    .reader-header-band__actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-self: center;
+    }
+    .story-toolbar {
       gap: 10px;
       margin-bottom: 10px;
       position: sticky;
       top: 0;
       z-index: 2;
-      min-height: 62px;
-      padding: 4px 0 10px;
       background: rgba(255, 255, 255, 0.94);
-      border-bottom: 1px solid var(--line-soft);
     }
     .inbox__meta {
       display: flex;
@@ -649,35 +667,27 @@
       font-size: 12px;
     }
     .reader-meta-card {
-      min-height: 62px;
-      padding: 4px 4px 10px;
+      padding: 0 4px 10px;
       border: 0;
-      border-bottom: 1px solid var(--line-soft);
       border-radius: 0;
       background: transparent;
       box-shadow: none;
       margin-bottom: 10px;
     }
     .reader-stage__compose .card {
-      min-height: 62px;
-      padding: 4px 14px 10px;
+      padding: 0 14px 10px;
       border: 0;
-      border-bottom: 1px solid var(--line-soft);
       border-radius: 0;
       background: transparent;
       box-shadow: none;
     }
-    .reader-meta-card .column-heading,
-    .reader-stage__compose .column-heading {
-      margin-bottom: 8px;
-    }
     .story-toolbar .panel-kicker,
     .reader-meta-card .eyebrow,
     .reader-stage__compose .eyebrow {
-      margin-bottom: 8px;
+      margin-bottom: 0;
     }
     .reader-meta-card .article-source {
-      margin-top: 6px;
+      margin-top: 0;
     }
     @media (max-width: 900px) {
       .reader-topbar {
@@ -848,8 +858,8 @@
       </div>
 
       <div class="reader-panel reader-panel--stories {% if density == 'compact' %}reader-panel--compact{% endif %}">
-        <div class="story-toolbar">
-          <div>
+        <div class="story-toolbar reader-header-band">
+          <div class="reader-header-band__main">
             {% if active_feed_id and selected %}
               <div class="panel-kicker">{{ selected.feed_name }}</div>
             {% elseif active_feed_id %}
@@ -858,7 +868,7 @@
               <div class="panel-kicker">All stories</div>
             {% endif %}
           </div>
-          <div class="actions-row">
+          <div class="actions-row reader-header-band__actions">
             <form method="post" action="{{ base_path }}/articles/archive-all">
               <input type="hidden" name="_csrf" value="{{ csrf }}" />
               {% if active_feed_id %}
@@ -927,8 +937,8 @@
           <div class="reader-stage">
             <div class="reader-stage__article">
               <div class="reader-meta-card">
-                <div class="column-heading">
-                  <div>
+                <div class="reader-header-band">
+                  <div class="reader-header-band__main">
                     <div class="eyebrow" data-reader-title>{{ selected.title }}</div>
                     <div class="article-source">
                       {% if selected.favicon_url %}
@@ -945,9 +955,8 @@
                       {% endif %}
                     </div>
                   </div>
-                </div>
-                <div class="inbox__meta">
-                  <div class="actions-row">
+                  <div class="inbox__meta reader-header-band__actions">
+                    <div class="actions-row">
                     <span class="reader-mode-links">
                       <a
                         href="{{ selected.mode_urls.feed|default(base_path ~ '/articles?' ~ (active_feed_id ? 'feed_id=' ~ active_feed_id ~ '&' : '') ~ 'selected=' ~ selected.id ~ '&mode=feed&density=' ~ density ~ '&layout=' ~ layout) }}"
@@ -973,6 +982,7 @@
                       <input type="hidden" name="_csrf" value="{{ csrf }}" />
                       <button type="submit" class="button-secondary">Archive</button>
                     </form>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -989,8 +999,8 @@
 
             <div class="reader-stage__compose">
               <div class="card">
-                <div class="column-heading">
-                  <div>
+                <div class="reader-header-band">
+                  <div class="reader-header-band__main">
                     <span class="eyebrow">Publish</span>
                     <h2 class="column-heading__title" style="margin-top: 2px;" data-publish-title>{{ selected.title }}</h2>
                   </div>
