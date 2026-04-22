@@ -182,6 +182,21 @@ function import_opml_feeds(PDO $pdo, array $feeds): array
     ];
 }
 
+function list_feed_folder_names(PDO $pdo): array
+{
+    $stmt = $pdo->query(
+        "SELECT DISTINCT TRIM(COALESCE(folder_name, '')) AS folder_name "
+        . 'FROM feeds '
+        . "WHERE TRIM(COALESCE(folder_name, '')) != '' "
+        . 'ORDER BY LOWER(TRIM(COALESCE(folder_name, \'\'))) ASC'
+    );
+
+    return array_values(array_filter(array_map(
+        static fn (array $row): string => trim((string) ($row['folder_name'] ?? '')),
+        $stmt->fetchAll()
+    )));
+}
+
 function register_feed_routes(App $app): void
 {
     $resolveRedirectTarget = static function ($request, string $fallback, string $status = ''): string {
@@ -311,6 +326,8 @@ function register_feed_routes(App $app): void
 
     $app->map(['GET', 'POST'], '/feeds/new', function ($request, $response) {
         $view = Twig::fromRequest($request);
+        $pdo = db_connection();
+        $folderOptions = list_feed_folder_names($pdo);
 
         if ($request->getMethod() === 'POST') {
             $data = (array) $request->getParsedBody();
@@ -324,6 +341,7 @@ function register_feed_routes(App $app): void
                     'title' => 'New Feed',
                     'error' => 'URL is required.',
                     'feed' => ['name' => $name, 'url' => $url, 'folder_name' => $folderName, 'is_active' => $isActive],
+                    'folder_options' => $folderOptions,
                     'action' => '/feeds/new',
                     'csrf' => csrf_token(),
                     'base_path' => base_path($request),
@@ -335,6 +353,7 @@ function register_feed_routes(App $app): void
                     'title' => 'New Feed',
                     'error' => 'URL must be valid.',
                     'feed' => ['name' => $name, 'url' => $url, 'folder_name' => $folderName, 'is_active' => $isActive],
+                    'folder_options' => $folderOptions,
                     'action' => '/feeds/new',
                     'csrf' => csrf_token(),
                     'base_path' => base_path($request),
@@ -345,13 +364,13 @@ function register_feed_routes(App $app): void
                 $name = suggest_feed_title_from_url($url) ?? $url;
             }
 
-            $pdo = db_connection();
             $existingFeed = find_feed_by_url($pdo, $url);
             if ($existingFeed !== null) {
                 return $view->render($response, 'feeds/form.twig', [
                     'title' => 'New Feed',
                     'error' => 'This feed already exists: ' . (string) ($existingFeed['name'] ?? $url),
                     'feed' => ['name' => $name, 'url' => $url, 'folder_name' => $folderName, 'is_active' => $isActive],
+                    'folder_options' => $folderOptions,
                     'action' => '/feeds/new',
                     'csrf' => csrf_token(),
                     'base_path' => base_path($request),
@@ -376,6 +395,7 @@ function register_feed_routes(App $app): void
         return $view->render($response, 'feeds/form.twig', [
             'title' => 'New Feed',
             'feed' => ['name' => '', 'url' => '', 'folder_name' => '', 'is_active' => 1],
+            'folder_options' => $folderOptions,
             'action' => '/feeds/new',
             'csrf' => csrf_token(),
             'base_path' => base_path($request),
@@ -395,6 +415,7 @@ function register_feed_routes(App $app): void
         }
 
         $view = Twig::fromRequest($request);
+        $folderOptions = list_feed_folder_names($pdo);
 
         if ($request->getMethod() === 'POST') {
             $data = (array) $request->getParsedBody();
@@ -412,6 +433,7 @@ function register_feed_routes(App $app): void
                     'title' => 'Edit Feed',
                     'error' => 'URL is required.',
                     'feed' => $feed,
+                    'folder_options' => $folderOptions,
                     'action' => "/feeds/{$feedId}/edit",
                     'csrf' => csrf_token(),
                     'base_path' => base_path($request),
@@ -427,6 +449,7 @@ function register_feed_routes(App $app): void
                     'title' => 'Edit Feed',
                     'error' => 'URL must be valid.',
                     'feed' => $feed,
+                    'folder_options' => $folderOptions,
                     'action' => "/feeds/{$feedId}/edit",
                     'csrf' => csrf_token(),
                     'base_path' => base_path($request),
@@ -447,6 +470,7 @@ function register_feed_routes(App $app): void
                     'title' => 'Edit Feed',
                     'error' => 'This feed already exists: ' . (string) ($existingFeed['name'] ?? $url),
                     'feed' => $feed,
+                    'folder_options' => $folderOptions,
                     'action' => "/feeds/{$feedId}/edit",
                     'csrf' => csrf_token(),
                     'base_path' => base_path($request),
@@ -472,6 +496,7 @@ function register_feed_routes(App $app): void
         return $view->render($response, 'feeds/form.twig', [
             'title' => 'Edit Feed',
             'feed' => $feed,
+            'folder_options' => $folderOptions,
             'action' => "/feeds/{$feedId}/edit",
             'csrf' => csrf_token(),
             'base_path' => base_path($request),

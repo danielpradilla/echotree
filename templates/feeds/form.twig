@@ -1,6 +1,35 @@
 {% extends "layout.twig" %}
 
 {% block content %}
+  <style>
+    .feed-folder-field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .feed-folder-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .feed-folder-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(246, 251, 243, 0.92);
+      color: var(--ink);
+      font-size: 12px;
+      line-height: 1.1;
+      cursor: pointer;
+    }
+    .feed-folder-chip:hover {
+      border-color: var(--accent);
+      background: rgba(90, 170, 149, 0.08);
+    }
+  </style>
   <div class="page-header">
     <div>
       <h1 class="page-title">{{ feed.id ? 'Edit feed' : 'Add feed' }}</h1>
@@ -21,9 +50,29 @@
         URL
         <input id="feed-url" type="url" name="url" value="{{ feed.url }}" required />
       </label>
-      <label>
+      <label class="feed-folder-field">
         Folder
-        <input type="text" name="folder_name" value="{{ feed.folder_name|default('') }}" placeholder="Optional folder, like Tech or Markets" />
+        <input
+          id="feed-folder-name"
+          type="text"
+          name="folder_name"
+          value="{{ feed.folder_name|default('') }}"
+          list="feed-folder-options"
+          placeholder="Optional folder, like Tech or Markets"
+        />
+        {% if folder_options is defined and folder_options|length > 0 %}
+          <datalist id="feed-folder-options">
+            {% for folder_name in folder_options %}
+              <option value="{{ folder_name }}"></option>
+            {% endfor %}
+          </datalist>
+          <div class="muted" style="font-size: 12px;">Existing folders:</div>
+          <div class="feed-folder-suggestions">
+            {% for folder_name in folder_options %}
+              <button type="button" class="feed-folder-chip" data-folder-choice="{{ folder_name }}">{{ folder_name }}</button>
+            {% endfor %}
+          </div>
+        {% endif %}
       </label>
       <div class="muted" id="feed-title-status" style="font-size: 12px; min-height: 18px;"></div>
       <label class="checkbox-row">
@@ -89,6 +138,17 @@
 
       if (urlInput.value.trim() !== '' && nameInput.value.trim() === '') {
         maybeSuggestTitle();
+      }
+
+      var folderInput = document.getElementById('feed-folder-name');
+      var folderButtons = Array.prototype.slice.call(document.querySelectorAll('[data-folder-choice]'));
+      if (folderInput && folderButtons.length) {
+        folderButtons.forEach(function (button) {
+          button.addEventListener('click', function () {
+            folderInput.value = button.getAttribute('data-folder-choice') || '';
+            folderInput.focus();
+          });
+        });
       }
     })();
   </script>
