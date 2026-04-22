@@ -318,7 +318,7 @@ function resolve_article_mode(array $article, ?string $requestedMode): string
 function article_reader_payload(array $article, string $mode, string $density, string $layout, string $basePath, ?int $feedId = null): array
 {
     $safeMode = resolve_article_mode($article, $mode);
-    $safeDensity = $density === 'compact' ? 'compact' : 'comfortable';
+    $safeDensity = 'compact';
     $safeLayout = in_array($layout, ['split', 'magazine', 'grid'], true) ? $layout : 'split';
     $baseQuery = [
         'selected' => (int) $article['id'],
@@ -506,7 +506,7 @@ function register_article_routes(App $app): void
         $feedId = isset($queryParams['feed_id']) ? (int) $queryParams['feed_id'] : null;
         $selectedId = isset($queryParams['selected']) ? (int) $queryParams['selected'] : null;
         $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'auto';
-        $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'compact';
+        $density = 'compact';
         $layout = isset($queryParams['layout']) ? (string) $queryParams['layout'] : 'split';
 
         $feeds = list_feed_navigation($pdo);
@@ -561,7 +561,7 @@ function register_article_routes(App $app): void
             'selected' => $selectedArticle,
             'accounts' => $accounts,
             'mode' => $mode,
-            'density' => $density === 'compact' ? 'compact' : 'comfortable',
+            'density' => 'compact',
             'layout' => in_array($layout, ['split', 'magazine', 'grid'], true) ? $layout : 'split',
             'status' => $queryParams['status'] ?? null,
             'error' => $queryParams['error'] ?? null,
@@ -617,7 +617,7 @@ function register_article_routes(App $app): void
         $selectedId = isset($queryParams['selected']) ? (int) $queryParams['selected'] : 0;
         $feedId = isset($queryParams['feed_id']) ? (int) $queryParams['feed_id'] : null;
         $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'auto';
-        $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'compact';
+        $density = 'compact';
         $layout = isset($queryParams['layout']) ? (string) $queryParams['layout'] : 'split';
 
         if ($selectedId <= 0) {
@@ -648,7 +648,7 @@ function register_article_routes(App $app): void
         $queryParams = $request->getQueryParams();
         $url = trim((string) ($queryParams['url'] ?? ''));
         $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'auto';
-        $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'compact';
+        $density = 'compact';
         $layout = isset($queryParams['layout']) ? (string) $queryParams['layout'] : 'split';
         $format = isset($queryParams['format']) ? (string) $queryParams['format'] : '';
 
@@ -685,7 +685,7 @@ function register_article_routes(App $app): void
         $redirectQuery = http_build_query([
             'selected' => $articleId,
             'mode' => normalize_article_mode($mode),
-            'density' => $density === 'compact' ? 'compact' : 'comfortable',
+            'density' => 'compact',
             'layout' => in_array($layout, ['split', 'magazine', 'grid'], true) ? $layout : 'split',
         ]);
 
@@ -1067,7 +1067,7 @@ function register_article_routes(App $app): void
         $pdo = db_connection();
         $queryParams = $request->getQueryParams();
         $mode = isset($queryParams['mode']) ? (string) $queryParams['mode'] : 'auto';
-        $density = isset($queryParams['density']) ? (string) $queryParams['density'] : 'compact';
+        $density = 'compact';
         $layout = isset($queryParams['layout']) ? (string) $queryParams['layout'] : 'split';
 
         $stmt = $pdo->prepare(
@@ -1087,7 +1087,7 @@ function register_article_routes(App $app): void
         $followBase = base_path($request) . '/articles/follow?';
         $followParams = http_build_query([
             'mode' => $resolvedMode,
-            'density' => $density === 'compact' ? 'compact' : 'comfortable',
+            'density' => 'compact',
             'layout' => in_array($layout, ['split', 'magazine', 'grid'], true) ? $layout : 'split',
         ]);
 

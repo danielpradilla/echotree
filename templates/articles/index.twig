@@ -751,31 +751,14 @@
             <button type="submit" class="button-secondary">Refresh feed</button>
           </form>
         {% endif %}
-        {% set density_base = base_path ~ '/articles?' %}
-        {% if active_feed_id %}
-          {% set density_base = density_base ~ 'feed_id=' ~ active_feed_id ~ '&' %}
-        {% endif %}
-        {% if selected %}
-          {% set density_base = density_base ~ 'selected=' ~ selected.id ~ '&mode=' ~ mode ~ '&layout=' ~ layout ~ '&' %}
-        {% else %}
-          {% set density_base = density_base ~ 'mode=' ~ mode ~ '&layout=' ~ layout ~ '&' %}
-        {% endif %}
-        <div class="toggle-group" aria-label="Density">
-          <a class="toggle-chip toggle-chip--density-compact {% if density == 'compact' %}is-selected{% endif %}" href="{{ density_base }}density=compact" title="Compact view" aria-label="Compact view">
-            <span class="toggle-chip__icon" aria-hidden="true"></span>
-          </a>
-          <a class="toggle-chip toggle-chip--density-comfortable {% if density == 'comfortable' %}is-selected{% endif %}" href="{{ density_base }}density=comfortable" title="Comfortable view" aria-label="Comfortable view">
-            <span class="toggle-chip__icon" aria-hidden="true"></span>
-          </a>
-        </div>
         {% set layout_base = base_path ~ '/articles?' %}
         {% if active_feed_id %}
           {% set layout_base = layout_base ~ 'feed_id=' ~ active_feed_id ~ '&' %}
         {% endif %}
         {% if selected %}
-          {% set layout_base = layout_base ~ 'selected=' ~ selected.id ~ '&mode=' ~ mode ~ '&density=' ~ density ~ '&' %}
+          {% set layout_base = layout_base ~ 'selected=' ~ selected.id ~ '&mode=' ~ mode ~ '&' %}
         {% else %}
-          {% set layout_base = layout_base ~ 'mode=' ~ mode ~ '&density=' ~ density ~ '&' %}
+          {% set layout_base = layout_base ~ 'mode=' ~ mode ~ '&' %}
         {% endif %}
         <div class="toggle-group" aria-label="Layout">
           <a class="toggle-chip toggle-chip--layout-split {% if layout == 'split' %}is-selected{% endif %}" href="{{ layout_base }}layout=split" title="Split layout" aria-label="Split layout">
