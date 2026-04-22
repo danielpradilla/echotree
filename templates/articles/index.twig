@@ -181,6 +181,9 @@
       min-height: 0;
       flex: 1 1 auto;
     }
+    .reader-mobile-backdrop {
+      display: none;
+    }
     .reader-panel {
       min-height: 0;
     }
@@ -708,9 +711,40 @@
       .reader-viewer {
         height: auto;
       }
-      .reader-shell { grid-template-columns: 1fr; }
+      .reader-shell {
+        grid-template-columns: 1fr;
+        position: relative;
+      }
+      .reader-mobile-backdrop {
+        display: none;
+        position: absolute;
+        inset: 0;
+        z-index: 18;
+        background: rgba(247, 248, 243, 0.78);
+        backdrop-filter: blur(4px);
+      }
+      .reader-shell.is-mobile-overlay-active .reader-mobile-backdrop {
+        display: block;
+      }
       .reader-panel--nav,
-      .reader-panel--stories { height: auto; max-height: none; border-right: 0; padding-right: 0; }
+      .reader-panel--stories {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        z-index: 20;
+        height: auto;
+        max-height: min(72vh, calc(100vh - var(--app-header-height) - 96px));
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding-right: 0;
+        box-shadow: 0 18px 40px var(--shadow);
+      }
+      .reader-panel--nav.is-collapsed,
+      .reader-panel--stories.is-collapsed {
+        display: none;
+      }
       .reader-panel--main {
         padding: 14px 12px 18px;
         height: auto;
@@ -730,7 +764,6 @@
       }
       .inbox__iframe { height: 50vh; }
       .inbox__toggle { display: inline-flex; }
-      .reader-panel.is-collapsed { display: none; }
       .story-list--grid {
         grid-template-columns: 1fr;
       }
@@ -803,6 +836,7 @@
     </div>
 
     <div class="reader-shell" data-reader-shell>
+      <button type="button" class="reader-mobile-backdrop" data-reader-mobile-backdrop aria-label="Close navigation overlays"></button>
       <div class="reader-panel reader-panel--nav {% if density == 'compact' %}reader-panel--compact{% endif %}">
         <div class="panel-head">
           <div class="panel-kicker">Sites</div>
@@ -1154,27 +1188,63 @@
     (function () {
       var toggles = document.querySelectorAll('.inbox__toggle');
       var shell = document.querySelector('[data-reader-shell]');
+      var backdrop = document.querySelector('[data-reader-mobile-backdrop]');
       var panels = {
         nav: document.querySelector('.reader-panel--nav'),
         stories: document.querySelector('.reader-panel--stories')
       };
+      var mobileInitialized = false;
+
+      function isMobile() {
+        return window.innerWidth <= 900;
+      }
+
+      function closeMobilePanels() {
+        Object.keys(panels).forEach(function (key) {
+          if (panels[key]) {
+            panels[key].classList.add('is-collapsed');
+          }
+        });
+      }
+
+      function syncMobileOverlayState() {
+        if (!shell) return;
+        if (!isMobile()) {
+          shell.classList.remove('is-mobile-overlay-active');
+          return;
+        }
+        var anyOpen = Object.keys(panels).some(function (key) {
+          return panels[key] && !panels[key].classList.contains('is-collapsed');
+        });
+        shell.classList.toggle('is-mobile-overlay-active', anyOpen);
+      }
 
       function applyState() {
+        if (isMobile()) {
+          if (!mobileInitialized) {
+            closeMobilePanels();
+            mobileInitialized = true;
+          }
+        } else {
+          mobileInitialized = false;
+        }
+
         toggles.forEach(function (toggle) {
           var target = toggle.getAttribute('data-toggle-target');
           var panel = target ? panels[target] : null;
           if (!panel) return;
-          var collapsed = window.innerWidth <= 900
+          var collapsed = isMobile()
             ? panel.classList.contains('is-collapsed')
             : shell && shell.classList.contains(target === 'nav' ? 'is-nav-collapsed' : 'is-stories-collapsed');
           toggle.style.display = 'inline-flex';
           toggle.textContent = collapsed
             ? 'Show ' + (target === 'nav' ? 'sites' : 'stories')
             : 'Hide ' + (target === 'nav' ? 'sites' : 'stories');
-          if (window.innerWidth > 900) {
+          if (!isMobile()) {
             panel.classList.remove('is-collapsed');
           }
         });
+        syncMobileOverlayState();
       }
 
       toggles.forEach(function (toggle) {
@@ -1182,8 +1252,12 @@
           var target = toggle.getAttribute('data-toggle-target');
           var panel = target ? panels[target] : null;
           if (!panel) return;
-          if (window.innerWidth <= 900) {
-            panel.classList.toggle('is-collapsed');
+          if (isMobile()) {
+            var willOpen = panel.classList.contains('is-collapsed');
+            closeMobilePanels();
+            if (willOpen) {
+              panel.classList.remove('is-collapsed');
+            }
           } else if (shell) {
             var collapsedClass = target === 'nav' ? 'is-nav-collapsed' : 'is-stories-collapsed';
             shell.classList.toggle(collapsedClass);
@@ -1191,6 +1265,13 @@
           applyState();
         });
       });
+
+      if (backdrop) {
+        backdrop.addEventListener('click', function () {
+          closeMobilePanels();
+          applyState();
+        });
+      }
 
       window.addEventListener('resize', applyState);
       applyState();
@@ -1218,6 +1299,7 @@
 
     (function () {
       var storyLinks = Array.prototype.slice.call(document.querySelectorAll('[data-story-link]'));
+      var siteLinks = Array.prototype.slice.call(document.querySelectorAll('[data-site-link]'));
       if (!storyLinks.length) return;
 
       var selectedFeedId = {{ active_feed_id ?: 'null' }};
@@ -1383,11 +1465,31 @@
 
       storyLinks.forEach(function (link) {
         link.addEventListener('click', function (event) {
+          if (window.innerWidth <= 900) {
+            var navPanel = document.querySelector('.reader-panel--nav');
+            var storiesPanel = document.querySelector('.reader-panel--stories');
+            var shell = document.querySelector('[data-reader-shell]');
+            if (navPanel) navPanel.classList.add('is-collapsed');
+            if (storiesPanel) storiesPanel.classList.add('is-collapsed');
+            if (shell) shell.classList.remove('is-mobile-overlay-active');
+          }
           if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
             return;
           }
           event.preventDefault();
           fetchAndApplyStory(link, false);
+        });
+      });
+
+      siteLinks.forEach(function (link) {
+        link.addEventListener('click', function () {
+          if (window.innerWidth > 900) return;
+          var navPanel = document.querySelector('.reader-panel--nav');
+          var storiesPanel = document.querySelector('.reader-panel--stories');
+          var shell = document.querySelector('[data-reader-shell]');
+          if (navPanel) navPanel.classList.add('is-collapsed');
+          if (storiesPanel) storiesPanel.classList.add('is-collapsed');
+          if (shell) shell.classList.remove('is-mobile-overlay-active');
         });
       });
 
