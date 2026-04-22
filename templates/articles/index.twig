@@ -233,7 +233,8 @@
       border-bottom: 1px solid var(--line-soft);
     }
     .story-list--compact .story-item {
-      padding: 6px 8px;
+      padding: 4px 6px;
+      margin-bottom: 4px;
     }
     .story-list--compact .story-title-row {
       gap: 6px;
@@ -258,6 +259,20 @@
     .site-item {
       border-bottom: 0;
       margin-bottom: 3px;
+    }
+    .reader-panel--nav.reader-panel--compact .site-item {
+      padding: 5px 6px;
+      margin-bottom: 2px;
+    }
+    .reader-panel--nav.reader-panel--compact .site-link {
+      gap: 6px;
+    }
+    .reader-panel--nav.reader-panel--compact .site-group + .site-group {
+      margin-top: 12px;
+    }
+    .reader-panel--nav.reader-panel--compact .site-group__header {
+      margin-bottom: 6px;
+      padding: 4px 6px;
     }
     .site-group + .site-group {
       margin-top: 16px;
@@ -777,7 +792,7 @@
     </div>
 
     <div class="reader-shell" data-reader-shell>
-      <div class="reader-panel reader-panel--nav">
+      <div class="reader-panel reader-panel--nav {% if density == 'compact' %}reader-panel--compact{% endif %}">
         <div class="panel-head">
           <div class="panel-kicker">Sites</div>
         </div>
@@ -831,7 +846,7 @@
         {% endfor %}
       </div>
 
-      <div class="reader-panel reader-panel--stories">
+      <div class="reader-panel reader-panel--stories {% if density == 'compact' %}reader-panel--compact{% endif %}">
         <div class="story-toolbar">
           <div>
             {% if active_feed_id and selected %}
