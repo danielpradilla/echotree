@@ -4,6 +4,35 @@ Personal RSS → Social Publishing Console.
 
 EchoTree is a self-hosted tool for reading articles and turning them into scheduled social posts. It is intentionally small, single-user, and boring.
 
+## Why EchoTree Is Great
+
+- `Self-hosted + private by default`: your feed corpus, drafts, schedules, and tokens live on your own infra.
+- `No platform lock-in`: works with X, LinkedIn, Mastodon, and Bluesky from one queue.
+- `Reader-first workflow`: discover from RSS, review content in-app, then schedule from the same screen.
+- `One-off URL sharing`: not limited to feed items; anything with a URL can enter the publishing pipeline via `/share`.
+- `AI where it helps`: generate comments/summaries/impactful phrases on demand instead of forcing auto-posting.
+- `Precise scheduling control`: edit scheduled time, comment, and destination networks per post before publish.
+- `Operationally simple`: SQLite + cron + PHP scripts, no queues or always-on workers required.
+- `Built for small teams/solo operators`: low cognitive load, fast to run, easy to reason about.
+- `Hybrid extension flow`: browser extension opens your existing authenticated `/share` UI, so no new public posting API surface.
+- `Security-focused defaults`: CSRF, encrypted OAuth tokens at rest, login throttling, sliding sessions, remember-me auto-login.
+- Allows me to share articles with friends for almost nothing!
+
+### Comparison (EchoTree vs Typical Paid Tools)
+
+| Capability | EchoTree | Typical Paid Tool |
+| --- | --- | --- |
+| Hosting model | Self-hosted on your infra | Vendor-hosted SaaS |
+| Data ownership | Full control of DB/content/tokens | Data stored on vendor platform |
+| Cross-network posting | X, LinkedIn, Mastodon, Bluesky | Often strong for major networks, limited for federated/open ones |
+| RSS-to-publishing flow | Built-in reader + scheduler in one app | Usually separate feed reading workflow |
+| Share any URL quickly | Native `/share` flow + browser helper | Usually available, often tied to product UI/API limits |
+| AI-assisted writing | On-demand summary/comment/phrase generation | Often token/plan-gated or workflow-constrained |
+| Pre-publish control | Edit scheduled time, comment, and networks before send | Varies by plan/workflow |
+| API exposure needed | Hybrid flow works without opening a public write API | API/webhook use is common |
+| Ops complexity | SQLite + cron + PHP scripts | No ops, but dependent on vendor uptime/pricing |
+| Cost model | Infra + API usage you control | Subscription pricing tiers |
+
 ## Local Development
 
 ### 1) Install dependencies
@@ -74,6 +103,14 @@ Example cron entry (runs every minute):
 * * * * * cd /path/to/echotree && /usr/bin/php scripts/publisher.php >> logs/publisher.log 2>&1
 ```
 
+The scheduled shares monitor now records each publisher run in SQLite and shows:
+
+- last cron execution time and outcome
+- recent cron history
+- stale `publishing` deliveries automatically recovered back to `pending`
+- per-network attempt counts, last attempt time, and delivery errors
+- missed / partial / failed states on `/scheduled`
+
 ## Cron (feed fetcher)
 
 Example cron entry (runs every 5 minutes):
@@ -87,6 +124,8 @@ Example cron entry (runs every 5 minutes):
 
 - `ECHOTREE_SECRET_KEY`: base64-encoded 32-byte key for encrypting OAuth tokens.
 - `ECHOTREE_POST_RATE_LIMIT_MINUTES`: per-account posting limit (default: 10 minutes).
+- `ECHOTREE_PUBLISHING_STALE_MINUTES`: how long a delivery can stay in `publishing` before the next cron run recovers it back to `pending` (default: 15 minutes).
+- `ECHOTREE_MONITOR_MISSED_MINUTES`: how late a due share can be before `/scheduled` marks it as missed (default: 5 minutes).
 - `ECHOTREE_LOGIN_THROTTLE_MINUTES`: login lockout window after repeated failures (default: 10 minutes).
 - `ECHOTREE_FEED_MAX_ITEMS`: max articles per feed fetch (default: 30).
 - `ECHOTREE_SESSION_LIFETIME_SECONDS`: session cookie lifetime in seconds (default: session-only).
@@ -114,7 +153,7 @@ cp .env.example .env
 OAuth 2.0:
 1) Set **Type of App** to **Web App** and **Confidential client**.
 2) Add your callback URL (local or production) exactly.
-3) Ensure OAuth 2.0 is enabled and scopes include `tweet.write users.read offline.access`.
+3) Ensure OAuth 2.0 is enabled and scopes include `tweet.read tweet.write users.read offline.access`.
 4) Set in `.env`:
 
 ```

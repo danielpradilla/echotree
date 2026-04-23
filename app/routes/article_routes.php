@@ -66,6 +66,121 @@ function echotree_schedule_utc_to_display(string $utcValue): string
     return $dt->format('Y-m-d H:i');
 }
 
+function echotree_schedule_utc_to_display_nullable(?string $utcValue): ?string
+{
+    $utcValue = trim((string) $utcValue);
+    if ($utcValue === '') {
+        return null;
+    }
+
+    return echotree_schedule_utc_to_display($utcValue);
+}
+
+function echotree_monitor_missed_minutes(): int
+{
+    $minutes = (int) (getenv('ECHOTREE_MONITOR_MISSED_MINUTES') ?: 5);
+    return $minutes < 1 ? 5 : $minutes;
+}
+
+function echotree_monitor_state(array $post): string
+{
+    $sent = (int) ($post['sent_delivery_count'] ?? 0);
+    $failed = (int) ($post['failed_delivery_count'] ?? 0);
+    $pending = (int) ($post['pending_delivery_count'] ?? 0);
+    $publishing = (int) ($post['publishing_delivery_count'] ?? 0);
+    $scheduledRaw = trim((string) ($post['scheduled_at'] ?? ''));
+
+    $scheduledAt = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $scheduledRaw, new DateTimeZone('UTC'));
+    $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+    $missedThreshold = $now->modify('-' . echotree_monitor_missed_minutes() . ' minutes');
+
+    if ($publishing > 0) {
+        return 'publishing';
+    }
+
+    if ($sent > 0 && ($pending > 0 || $failed > 0)) {
+        return 'partial';
+    }
+
+    if ($failed > 0 && $sent === 0 && $pending === 0) {
+        return 'failed';
+    }
+
+    if ($pending > 0 && $scheduledAt instanceof DateTimeImmutable) {
+        if ($scheduledAt <= $missedThreshold) {
+            return 'missed';
+        }
+        if ($scheduledAt <= $now) {
+            return 'due';
+        }
+    }
+
+    if ($pending > 0) {
+        return 'scheduled';
+    }
+
+    if ($sent > 0) {
+        return 'sent';
+    }
+
+    return (string) ($post['status'] ?? 'scheduled');
+}
+
+function echotree_monitor_state_label(string $state): string
+{
+    return match ($state) {
+        'publishing' => 'Publishing',
+        'partial' => 'Partial',
+        'failed' => 'Failed',
+        'missed' => 'Missed',
+        'due' => 'Due now',
+        'sent' => 'Sent',
+        default => 'Scheduled',
+    };
+}
+
+function echotree_monitor_state_tone(string $state): string
+{
+    return match ($state) {
+        'failed', 'missed' => 'danger',
+        'partial' => 'warning',
+        'publishing', 'sent' => 'success',
+        'due' => 'warning',
+        default => 'neutral',
+    };
+}
+
+function echotree_present_publisher_run(array $run): array
+{
+    $run['started_at_local'] = echotree_schedule_utc_to_display_nullable((string) ($run['started_at'] ?? ''));
+    $run['finished_at_local'] = echotree_schedule_utc_to_display_nullable((string) ($run['finished_at'] ?? ''));
+    $run['status_label'] = match ((string) ($run['status'] ?? '')) {
+        'success' => 'Healthy',
+        'failed' => 'Failed',
+        'lock_skipped' => 'Skipped',
+        'running' => 'Running',
+        default => ucfirst((string) ($run['status'] ?? 'unknown')),
+    };
+    $run['status_tone'] = match ((string) ($run['status'] ?? '')) {
+        'success' => 'success',
+        'failed' => 'danger',
+        'lock_skipped' => 'warning',
+        'running' => 'neutral',
+        default => 'neutral',
+    };
+
+    $started = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', (string) ($run['started_at'] ?? ''), new DateTimeZone('UTC'));
+    $finished = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', (string) ($run['finished_at'] ?? ''), new DateTimeZone('UTC'));
+    if ($started instanceof DateTimeImmutable && $finished instanceof DateTimeImmutable) {
+        $seconds = max(0, $finished->getTimestamp() - $started->getTimestamp());
+        $run['duration_label'] = $seconds < 60 ? ($seconds . 's') : (int) floor($seconds / 60) . 'm';
+    } else {
+        $run['duration_label'] = null;
+    }
+
+    return $run;
+}
+
 function create_or_publish_history_post(
     PDO $pdo,
     int $articleId,
@@ -853,6 +968,8 @@ function register_article_routes(App $app): void
         $pdo = db_connection();
         $posts = list_scheduled_posts($pdo);
         $accounts = list_active_accounts($pdo);
+        $lastPublisherRun = find_latest_publisher_run($pdo);
+        $recentPublisherRuns = array_map('echotree_present_publisher_run', list_recent_publisher_runs($pdo, 6));
         $queryParams = $request->getQueryParams();
         $selectedId = isset($queryParams['selected']) ? (int) $queryParams['selected'] : 0;
         if ($selectedId === 0 && count($posts) > 0) {
@@ -860,8 +977,21 @@ function register_article_routes(App $app): void
         }
 
         $selectedPost = null;
+        $postSummary = [
+            'scheduled' => 0,
+            'due' => 0,
+            'missed' => 0,
+            'partial' => 0,
+            'failed' => 0,
+            'publishing' => 0,
+        ];
         foreach ($posts as &$post) {
             $post['scheduled_at_local'] = echotree_schedule_utc_to_display((string) $post['scheduled_at']);
+            $post['last_attempted_at_local'] = echotree_schedule_utc_to_display_nullable((string) ($post['last_attempted_at'] ?? ''));
+            $post['monitor_state'] = echotree_monitor_state($post);
+            $post['monitor_label'] = echotree_monitor_state_label((string) $post['monitor_state']);
+            $post['monitor_tone'] = echotree_monitor_state_tone((string) $post['monitor_state']);
+            $postSummary[$post['monitor_state']] = ($postSummary[$post['monitor_state']] ?? 0) + 1;
         }
         unset($post);
         foreach ($posts as $post) {
@@ -877,6 +1007,11 @@ function register_article_routes(App $app): void
             }
 
             $selectedPost = $post;
+            foreach ($deliveries as &$delivery) {
+                $delivery['last_attempted_at_local'] = echotree_schedule_utc_to_display_nullable((string) ($delivery['last_attempted_at'] ?? ''));
+                $delivery['sent_at_local'] = echotree_schedule_utc_to_display_nullable((string) ($delivery['sent_at'] ?? ''));
+            }
+            unset($delivery);
             $selectedPost['deliveries'] = $deliveries;
             $selectedPost['scheduled_at_input'] = echotree_schedule_utc_to_input((string) $post['scheduled_at']);
             $selectedPost['selected_account_ids'] = $selected;
@@ -891,8 +1026,12 @@ function register_article_routes(App $app): void
             'selected_post' => $selectedPost,
             'accounts' => $accounts,
             'updated' => ($queryParams['updated'] ?? '') === '1',
-            'cancelled' => ($queryParams['cancelled'] ?? '') === '1',
+            'cancelled_count' => max(0, (int) ($queryParams['cancelled'] ?? '0')),
+            'notice' => (string) ($queryParams['notice'] ?? ''),
             'error' => (string) ($queryParams['error'] ?? ''),
+            'post_summary' => $postSummary,
+            'last_publisher_run' => $lastPublisherRun ? echotree_present_publisher_run($lastPublisherRun) : null,
+            'recent_publisher_runs' => $recentPublisherRuns,
             'csrf' => csrf_token(),
             'base_path' => base_path($request),
             'schedule_timezone' => echotree_schedule_timezone_id(),
@@ -923,7 +1062,7 @@ function register_article_routes(App $app): void
         }
 
         $pdo = db_connection();
-        $postStmt = $pdo->prepare("SELECT id FROM posts WHERE id = :id AND status = 'scheduled'");
+        $postStmt = $pdo->prepare("SELECT id FROM posts WHERE id = :id AND status IN ('scheduled', 'failed')");
         $postStmt->execute([':id' => $postId]);
         if (!$postStmt->fetch()) {
             return $response
@@ -943,7 +1082,7 @@ function register_article_routes(App $app): void
         $pdo->beginTransaction();
         try {
             $updatePost = $pdo->prepare(
-                'UPDATE posts SET comment = :comment, scheduled_at = :scheduled_at WHERE id = :id'
+                "UPDATE posts SET comment = :comment, scheduled_at = :scheduled_at, status = 'scheduled' WHERE id = :id"
             );
             $updatePost->execute([
                 ':comment' => $comment,
@@ -997,6 +1136,130 @@ function register_article_routes(App $app): void
             ->withStatus(302);
     });
 
+    $app->post('/scheduled/cancel', function ($request, $response) {
+        $data = (array) $request->getParsedBody();
+        $rawPostIds = array_map('intval', (array) ($data['post_ids'] ?? []));
+        $postIds = array_values(array_unique(array_filter($rawPostIds, fn ($id) => $id > 0)));
+        $targetBase = url_for($request, '/scheduled');
+
+        if (count($postIds) === 0) {
+            return $response
+                ->withHeader('Location', $targetBase . '?error=invalid_input')
+                ->withStatus(302);
+        }
+
+        $pdo = db_connection();
+        $placeholders = implode(', ', array_fill(0, count($postIds), '?'));
+        $postStmt = $pdo->prepare(
+            "SELECT id FROM posts WHERE status IN ('scheduled', 'failed') AND id IN ($placeholders)"
+        );
+        $postStmt->execute($postIds);
+        $editableIds = array_map('intval', array_column($postStmt->fetchAll(), 'id'));
+        if (count($editableIds) === 0) {
+            return $response
+                ->withHeader('Location', $targetBase . '?error=not_editable')
+                ->withStatus(302);
+        }
+
+        $editablePlaceholders = implode(', ', array_fill(0, count($editableIds), '?'));
+        $pdo->beginTransaction();
+        try {
+            $updatePost = $pdo->prepare(
+                "UPDATE posts SET status = 'cancelled' WHERE id IN ($editablePlaceholders)"
+            );
+            $updatePost->execute($editableIds);
+
+            $deleteDeliveries = $pdo->prepare(
+                "DELETE FROM deliveries WHERE post_id IN ($editablePlaceholders) AND status IN ('pending', 'failed', 'publishing')"
+            );
+            $deleteDeliveries->execute($editableIds);
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            return $response
+                ->withHeader('Location', $targetBase . '?error=save_failed')
+                ->withStatus(302);
+        }
+
+        return $response
+            ->withHeader('Location', $targetBase . '?cancelled=' . count($editableIds))
+            ->withStatus(302);
+    });
+
+    $app->post('/scheduled/run', function ($request, $response) {
+        $data = (array) $request->getParsedBody();
+        $rawPostIds = array_map('intval', (array) ($data['post_ids'] ?? []));
+        $postIds = array_values(array_unique(array_filter($rawPostIds, fn ($id) => $id > 0)));
+        $targetBase = url_for($request, '/scheduled');
+
+        if (count($postIds) === 0) {
+            return $response
+                ->withHeader('Location', $targetBase . '?error=invalid_input')
+                ->withStatus(302);
+        }
+
+        $pdo = db_connection();
+        $placeholders = implode(', ', array_fill(0, count($postIds), '?'));
+        $postStmt = $pdo->prepare(
+            "SELECT id FROM posts WHERE status IN ('scheduled', 'failed') AND id IN ($placeholders)"
+        );
+        $postStmt->execute($postIds);
+        $eligibleIds = array_map('intval', array_column($postStmt->fetchAll(), 'id'));
+        if (count($eligibleIds) === 0) {
+            return $response
+                ->withHeader('Location', $targetBase . '?error=not_editable')
+                ->withStatus(302);
+        }
+
+        $ranCount = 0;
+        foreach ($eligibleIds as $eligibleId) {
+            if (publish_post_now($eligibleId)) {
+                $ranCount++;
+            }
+        }
+
+        if ($ranCount === 0) {
+            return $response
+                ->withHeader('Location', $targetBase . '?error=publisher_busy')
+                ->withStatus(302);
+        }
+
+        return $response
+            ->withHeader('Location', $targetBase . '?notice=ran_selected_' . $ranCount)
+            ->withStatus(302);
+    });
+
+    $app->post('/scheduled/{id}/run', function ($request, $response, $args) {
+        $postId = (int) ($args['id'] ?? 0);
+        $targetBase = url_for($request, '/scheduled');
+        $selectedQuery = '&selected=' . $postId;
+        if ($postId <= 0) {
+            return $response
+                ->withHeader('Location', $targetBase . '?error=invalid_input')
+                ->withStatus(302);
+        }
+
+        $pdo = db_connection();
+        $postStmt = $pdo->prepare("SELECT id FROM posts WHERE id = :id AND status IN ('scheduled', 'failed')");
+        $postStmt->execute([':id' => $postId]);
+        if (!$postStmt->fetch()) {
+            return $response
+                ->withHeader('Location', $targetBase . '?error=not_editable' . $selectedQuery)
+                ->withStatus(302);
+        }
+
+        if (!publish_post_now($postId)) {
+            return $response
+                ->withHeader('Location', $targetBase . '?error=publisher_busy' . $selectedQuery)
+                ->withStatus(302);
+        }
+
+        return $response
+            ->withHeader('Location', $targetBase . '?selected=' . $postId . '&notice=ran_now')
+            ->withStatus(302);
+    });
+
     $app->post('/scheduled/{id}/cancel', function ($request, $response, $args) {
         $postId = (int) ($args['id'] ?? 0);
         $targetBase = url_for($request, '/scheduled');
@@ -1008,7 +1271,7 @@ function register_article_routes(App $app): void
         }
 
         $pdo = db_connection();
-        $postStmt = $pdo->prepare("SELECT id FROM posts WHERE id = :id AND status = 'scheduled'");
+        $postStmt = $pdo->prepare("SELECT id FROM posts WHERE id = :id AND status IN ('scheduled', 'failed')");
         $postStmt->execute([':id' => $postId]);
         if (!$postStmt->fetch()) {
             return $response
@@ -1020,7 +1283,7 @@ function register_article_routes(App $app): void
         try {
             $pdo->prepare("UPDATE posts SET status = 'cancelled' WHERE id = :id")
                 ->execute([':id' => $postId]);
-            $pdo->prepare("DELETE FROM deliveries WHERE post_id = :post_id AND status IN ('pending', 'failed')")
+            $pdo->prepare("DELETE FROM deliveries WHERE post_id = :post_id AND status IN ('pending', 'failed', 'publishing')")
                 ->execute([':post_id' => $postId]);
             $pdo->commit();
         } catch (Throwable $e) {

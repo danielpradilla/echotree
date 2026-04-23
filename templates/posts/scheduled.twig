@@ -4,8 +4,59 @@
   <style>
     .scheduled {
       display: grid;
-      grid-template-columns: 340px 1fr;
+      grid-template-columns: 360px 1fr;
       gap: 20px;
+    }
+    .scheduled__dashboard {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .scheduled__stat {
+      padding: 14px 16px;
+      border: 1px solid var(--line-soft);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+    .scheduled__stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.1;
+      margin-top: 4px;
+    }
+    .scheduled__stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .scheduled__run-card {
+      margin-bottom: 18px;
+      padding: 16px;
+      border: 1px solid var(--line-soft);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+    .scheduled__run-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    .scheduled__run-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .scheduled__run-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(246, 251, 243, 0.7);
     }
     .scheduled__list {
       border-right: 1px solid var(--line-soft);
@@ -18,46 +69,278 @@
       border-bottom: 1px solid var(--line-soft);
     }
     .scheduled__item a { text-decoration: none; }
+    .scheduled__row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .scheduled__row--selectable {
+      align-items: flex-start;
+    }
+    .scheduled__item-main {
+      min-width: 0;
+      flex: 1;
+    }
+    .scheduled__checkbox {
+      margin-top: 2px;
+      flex: 0 0 auto;
+    }
+    .scheduled__bulk-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .scheduled__bulk-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
     .scheduled__item.active {
       background: var(--selection);
       border-radius: 12px;
     }
+    .scheduled__badges {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .scheduled__badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .scheduled__badge--neutral {
+      background: rgba(70, 115, 99, 0.12);
+      color: var(--muted);
+    }
+    .scheduled__badge--success {
+      background: color-mix(in srgb, var(--accent) 14%, transparent);
+      color: var(--accent-strong);
+    }
+    .scheduled__badge--warning {
+      background: rgba(247, 203, 21, 0.18);
+      color: #7a6100;
+    }
+    .scheduled__badge--danger {
+      background: rgba(191, 62, 62, 0.12);
+      color: #a12a2a;
+    }
+    .scheduled__detail-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .scheduled__delivery-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .scheduled__delivery-item {
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line-soft);
+      background: rgba(255, 255, 255, 0.7);
+    }
+    @media (max-width: 1100px) {
+      .scheduled__dashboard {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .scheduled__run-grid {
+        grid-template-columns: 1fr;
+      }
+    }
     @media (max-width: 900px) {
-      .scheduled { grid-template-columns: 1fr; }
-      .scheduled__list { border-right: 0; padding-right: 0; max-height: none; }
+      .scheduled {
+        grid-template-columns: 1fr;
+      }
+      .scheduled__list {
+        border-right: 0;
+        padding-right: 0;
+        max-height: none;
+      }
+      .scheduled__dashboard {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 
   <div class="card">
     <h2 style="margin-top: 0;">Scheduled Shares</h2>
+    <p class="muted" style="margin-bottom: 16px;">Monitor pending and failed deliveries, see when cron last ran, and manually push stuck shares through.</p>
+
     {% if updated %}
       <p class="muted">Scheduled post updated.</p>
     {% endif %}
-    {% if cancelled %}
-      <p class="muted">Scheduled post cancelled.</p>
+    {% if cancelled_count > 0 %}
+      <p class="muted">
+        {% if cancelled_count == 1 %}
+          Scheduled post cancelled.
+        {% else %}
+          {{ cancelled_count }} scheduled posts cancelled.
+        {% endif %}
+      </p>
+    {% endif %}
+    {% if notice == 'ran_now' %}
+      <p class="muted">Selected share processed immediately.</p>
+    {% elseif notice|slice(0, 13) == 'ran_selected_' %}
+      <p class="muted">{{ notice|slice(13) }} selected shares processed immediately.</p>
     {% endif %}
     {% if error %}
-      <p class="muted">Update failed: {{ error }}.</p>
+      <p class="muted">
+        {% if error == 'publisher_busy' %}
+          Publisher is already busy. Wait for the current run to finish and try again.
+        {% elseif error == 'invalid_input' %}
+          Nothing valid was selected.
+        {% elseif error == 'not_editable' %}
+          This share can no longer be edited from the monitor.
+        {% elseif error == 'no_active_accounts' %}
+          No active accounts are available for this share.
+        {% elseif error == 'invalid_schedule' %}
+          The scheduled time could not be parsed.
+        {% else %}
+          Update failed: {{ error }}.
+        {% endif %}
+      </p>
     {% endif %}
 
+    <div class="scheduled__dashboard">
+      <div class="scheduled__stat">
+        <div class="scheduled__stat-label">Scheduled</div>
+        <div class="scheduled__stat-value">{{ post_summary.scheduled|default(0) + post_summary.due|default(0) }}</div>
+      </div>
+      <div class="scheduled__stat">
+        <div class="scheduled__stat-label">Missed</div>
+        <div class="scheduled__stat-value">{{ post_summary.missed|default(0) }}</div>
+      </div>
+      <div class="scheduled__stat">
+        <div class="scheduled__stat-label">Partial</div>
+        <div class="scheduled__stat-value">{{ post_summary.partial|default(0) }}</div>
+      </div>
+      <div class="scheduled__stat">
+        <div class="scheduled__stat-label">Failed</div>
+        <div class="scheduled__stat-value">{{ post_summary.failed|default(0) }}</div>
+      </div>
+      <div class="scheduled__stat">
+        <div class="scheduled__stat-label">Publishing</div>
+        <div class="scheduled__stat-value">{{ post_summary.publishing|default(0) }}</div>
+      </div>
+    </div>
+
+    <div class="scheduled__run-card">
+      <div class="scheduled__run-grid">
+        <div>
+          <div class="scheduled__row">
+            <strong>Cron Health</strong>
+            {% if last_publisher_run %}
+              <span class="scheduled__badge scheduled__badge--{{ last_publisher_run.status_tone }}">{{ last_publisher_run.status_label }}</span>
+            {% endif %}
+          </div>
+            {% if last_publisher_run %}
+            <div class="muted" style="margin-top: 6px;">
+              Last run: {{ last_publisher_run.started_at_local ? last_publisher_run.started_at_local : 'Unknown' }}{% if last_publisher_run.duration_label %} · {{ last_publisher_run.duration_label }}{% endif %}
+            </div>
+            <div class="muted" style="font-size: 13px; margin-top: 8px;">
+              Due posts {{ last_publisher_run.due_post_count }} · attempted {{ last_publisher_run.processed_delivery_count }} · sent {{ last_publisher_run.sent_count }} · failed {{ last_publisher_run.failed_count }} · recovered stale {{ last_publisher_run.recovered_delivery_count }}
+            </div>
+            {% if last_publisher_run.note %}
+              <div class="muted" style="font-size: 13px; margin-top: 8px;">{{ last_publisher_run.note }}</div>
+            {% endif %}
+            {% if last_publisher_run.error %}
+              <div style="font-size: 13px; margin-top: 8px; color: #a12a2a;">{{ last_publisher_run.error }}</div>
+            {% endif %}
+          {% else %}
+            <div class="muted" style="margin-top: 6px;">No publisher runs recorded yet. The first cron execution will create the health log.</div>
+          {% endif %}
+        </div>
+        <div>
+          <strong>Recent Runs</strong>
+          {% if recent_publisher_runs|length == 0 %}
+            <div class="muted" style="margin-top: 8px;">No cron history yet.</div>
+          {% else %}
+            <div class="scheduled__run-list">
+              {% for run in recent_publisher_runs %}
+                <div class="scheduled__run-item">
+                  <div>
+                    <div style="font-size: 13px;">{{ run.started_at_local ? run.started_at_local : 'Unknown time' }}</div>
+                    <div class="muted" style="font-size: 12px;">due {{ run.due_post_count }} · sent {{ run.sent_count }} · failed {{ run.failed_count }}</div>
+                  </div>
+                  <span class="scheduled__badge scheduled__badge--{{ run.status_tone }}">{{ run.status_label }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
     {% if posts|length == 0 %}
-      <p class="muted">No scheduled posts right now.</p>
+      <p class="muted">No scheduled or failed shares right now.</p>
     {% else %}
       <div class="scheduled">
         <div class="scheduled__list">
-          {% for post in posts %}
-            {% set is_selected = selected_post and selected_post.id == post.id %}
-            <div class="scheduled__item {% if is_selected %}active{% endif %}">
-              <div>
-                <a href="{{ base_path }}/scheduled?selected={{ post.id }}">
-                  <strong>{{ post.article_title }}</strong>
-                </a>
-              </div>
-              <div class="muted" style="font-size: 12px;">
-                {{ post.scheduled_at_local }} ({{ schedule_timezone }}) · {{ post.status }} · #{{ post.id }}
+          <form method="post" action="{{ base_path }}/scheduled/run">
+            <input type="hidden" name="_csrf" value="{{ csrf }}" />
+            <div class="scheduled__bulk-actions">
+              <label class="muted" style="font-size: 12px;">
+                <input type="checkbox" data-scheduled-select-all />
+                Select all
+              </label>
+              <div class="scheduled__bulk-buttons">
+                <button type="submit">Run selected now</button>
               </div>
             </div>
-          {% endfor %}
+
+            {% for post in posts %}
+              {% set is_selected = selected_post and selected_post.id == post.id %}
+              <div class="scheduled__item {% if is_selected %}active{% endif %}">
+                <div class="scheduled__row scheduled__row--selectable">
+                  <label class="scheduled__checkbox" aria-label="Select scheduled post {{ post.id }}">
+                    <input type="checkbox" name="post_ids[]" value="{{ post.id }}" data-scheduled-item />
+                  </label>
+                  <div class="scheduled__item-main">
+                    <div class="scheduled__row">
+                      <div>
+                        <a href="{{ base_path }}/scheduled?selected={{ post.id }}">
+                          <strong>{{ post.article_title }}</strong>
+                        </a>
+                      </div>
+                      <div class="scheduled__badges">
+                        <span class="scheduled__badge scheduled__badge--{{ post.monitor_tone }}">{{ post.monitor_label }}</span>
+                        <span class="scheduled__badge scheduled__badge--neutral">{{ post.sent_delivery_count }}/{{ post.delivery_count }} sent</span>
+                      </div>
+                    </div>
+                    <div class="muted" style="font-size: 12px; margin-top: 4px;">
+                      {{ post.scheduled_at_local }} ({{ schedule_timezone }}) · Post #{{ post.id }}
+                    </div>
+                    <div class="muted" style="font-size: 12px; margin-top: 4px;">
+                      pending {{ post.pending_delivery_count }} · publishing {{ post.publishing_delivery_count }} · failed {{ post.failed_delivery_count }}
+                      {% if post.last_attempted_at_local %}
+                        · last attempt {{ post.last_attempted_at_local }}
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </form>
+
+          <form method="post" action="{{ base_path }}/scheduled/cancel" style="margin-top: 8px;">
+            <input type="hidden" name="_csrf" value="{{ csrf }}" />
+            {% for post in posts %}
+              <input type="hidden" name="post_ids[]" value="{{ post.id }}" />
+            {% endfor %}
+            <button type="submit" class="button-secondary">Cancel all shown</button>
+          </form>
         </div>
 
         <div>
@@ -65,8 +348,15 @@
             <div style="display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
               <div>
                 <strong>{{ selected_post.article_title }}</strong>
-                <div class="muted" style="font-size: 12px;">
-                  Scheduled: {{ selected_post.scheduled_at_local }} ({{ schedule_timezone }}) · Status: {{ selected_post.status }} · Post #{{ selected_post.id }}
+                <div class="muted" style="font-size: 12px; margin-top: 4px;">
+                  Scheduled: {{ selected_post.scheduled_at_local }} ({{ schedule_timezone }}) · Status: {{ selected_post.monitor_label }} · Post #{{ selected_post.id }}
+                </div>
+                <div class="scheduled__badges" style="justify-content: flex-start; margin-top: 8px;">
+                  <span class="scheduled__badge scheduled__badge--{{ selected_post.monitor_tone }}">{{ selected_post.monitor_label }}</span>
+                  <span class="scheduled__badge scheduled__badge--neutral">{{ selected_post.sent_delivery_count }}/{{ selected_post.delivery_count }} sent</span>
+                  {% if selected_post.last_attempted_at_local %}
+                    <span class="scheduled__badge scheduled__badge--neutral">Last attempt {{ selected_post.last_attempted_at_local }}</span>
+                  {% endif %}
                 </div>
               </div>
               <div>
@@ -74,7 +364,24 @@
               </div>
             </div>
 
-            <form method="post" action="{{ base_path }}/scheduled/{{ selected_post.id }}/update" style="margin-top: 10px;">
+            <div class="scheduled__detail-actions">
+              <form method="post" action="{{ base_path }}/scheduled/{{ selected_post.id }}/run">
+                <input type="hidden" name="_csrf" value="{{ csrf }}" />
+                <button type="submit">
+                  {% if selected_post.monitor_state in ['failed', 'missed', 'partial'] %}
+                    Retry now
+                  {% else %}
+                    Run now
+                  {% endif %}
+                </button>
+              </form>
+              <form method="post" action="{{ base_path }}/scheduled/{{ selected_post.id }}/cancel">
+                <input type="hidden" name="_csrf" value="{{ csrf }}" />
+                <button type="submit" class="button-secondary">Cancel this share</button>
+              </form>
+            </div>
+
+            <form method="post" action="{{ base_path }}/scheduled/{{ selected_post.id }}/update" style="margin-top: 14px;">
               <input type="hidden" name="_csrf" value="{{ csrf }}" />
               <label>
                 Comment
@@ -88,7 +395,7 @@
               </div>
               <div style="margin-top: 8px;">
                 <strong style="font-size: 14px;">Networks</strong>
-                <div class="muted" style="font-size: 12px;">Only active accounts can be selected.</div>
+                <div class="muted" style="font-size: 12px;">Active networks can be edited here. Successful deliveries remain recorded.</div>
                 <div style="margin-top: 4px;">
                   {% for account in accounts %}
                     {% set checked = account.id in selected_post.selected_account_ids %}
@@ -104,21 +411,35 @@
               </div>
             </form>
 
-            <form method="post" action="{{ base_path }}/scheduled/{{ selected_post.id }}/cancel" style="margin-top: 8px;">
-              <input type="hidden" name="_csrf" value="{{ csrf }}" />
-              <button type="submit">Cancel scheduled post</button>
-            </form>
-
             {% if selected_post.deliveries|length > 0 %}
-              <div style="margin-top: 8px;">
-                <div class="muted" style="font-size: 12px;">Current delivery records:</div>
-                <ul style="margin: 6px 0 0 18px;">
+              <div style="margin-top: 16px;">
+                <strong>Delivery Records</strong>
+                <div class="scheduled__delivery-list">
                   {% for d in selected_post.deliveries %}
-                    <li class="muted">
-                      {{ d.platform }} · {{ d.handle }} — {{ d.status }}{% if d.error %} ({{ d.error }}){% endif %}
-                    </li>
+                    {% set tone = d.status == 'sent' ? 'success' : (d.status == 'failed' ? 'danger' : (d.status == 'publishing' ? 'warning' : 'neutral')) %}
+                    <div class="scheduled__delivery-item">
+                      <div class="scheduled__row">
+                        <div>
+                          <strong>{{ d.platform }} · {{ d.display_name }}</strong>
+                          <div class="muted" style="font-size: 12px;">{{ d.handle }}</div>
+                        </div>
+                        <span class="scheduled__badge scheduled__badge--{{ tone }}">{{ d.status }}</span>
+                      </div>
+                      <div class="muted" style="font-size: 12px; margin-top: 8px;">
+                        Attempts {{ d.attempt_count|default(0) }}
+                        {% if d.last_attempted_at_local %}
+                          · last attempt {{ d.last_attempted_at_local }}
+                        {% endif %}
+                        {% if d.sent_at_local %}
+                          · sent {{ d.sent_at_local }}
+                        {% endif %}
+                      </div>
+                      {% if d.error %}
+                        <div style="font-size: 12px; margin-top: 8px; color: #a12a2a;">{{ d.error }}</div>
+                      {% endif %}
+                    </div>
                   {% endfor %}
-                </ul>
+                </div>
               </div>
             {% endif %}
           {% endif %}
@@ -126,4 +447,31 @@
       </div>
     {% endif %}
   </div>
+
+  <script>
+    (() => {
+      const selectAll = document.querySelector('[data-scheduled-select-all]');
+      const itemCheckboxes = Array.from(document.querySelectorAll('[data-scheduled-item]'));
+      if (!selectAll || itemCheckboxes.length === 0) {
+        return;
+      }
+
+      const syncSelectAll = () => {
+        const checkedCount = itemCheckboxes.filter((checkbox) => checkbox.checked).length;
+        selectAll.checked = checkedCount === itemCheckboxes.length;
+        selectAll.indeterminate = checkedCount > 0 && checkedCount < itemCheckboxes.length;
+      };
+
+      selectAll.addEventListener('change', () => {
+        itemCheckboxes.forEach((checkbox) => {
+          checkbox.checked = selectAll.checked;
+        });
+        syncSelectAll();
+      });
+
+      itemCheckboxes.forEach((checkbox) => {
+        checkbox.addEventListener('change', syncSelectAll);
+      });
+    })();
+  </script>
 {% endblock %}

@@ -178,11 +178,21 @@ function list_scheduled_posts(PDO $pdo): array
 {
     $stmt = $pdo->query(
         "SELECT p.id, p.article_id, p.comment, p.scheduled_at, p.status, p.created_at, "
-        . "a.title AS article_title, a.url AS article_url "
+        . "a.title AS article_title, a.url AS article_url, "
+        . "COALESCE(SUM(CASE WHEN d.status = 'sent' THEN 1 ELSE 0 END), 0) AS sent_delivery_count, "
+        . "COALESCE(SUM(CASE WHEN d.status = 'failed' THEN 1 ELSE 0 END), 0) AS failed_delivery_count, "
+        . "COALESCE(SUM(CASE WHEN d.status = 'pending' THEN 1 ELSE 0 END), 0) AS pending_delivery_count, "
+        . "COALESCE(SUM(CASE WHEN d.status = 'publishing' THEN 1 ELSE 0 END), 0) AS publishing_delivery_count, "
+        . "MAX(d.last_attempted_at) AS last_attempted_at, "
+        . "COUNT(d.id) AS delivery_count "
         . "FROM posts p "
         . "JOIN articles a ON a.id = p.article_id "
-        . "WHERE p.status = 'scheduled' "
-        . "ORDER BY p.scheduled_at ASC, p.id ASC"
+        . "LEFT JOIN deliveries d ON d.post_id = p.id "
+        . "WHERE p.status IN ('scheduled', 'failed') "
+        . "GROUP BY p.id, p.article_id, p.comment, p.scheduled_at, p.status, p.created_at, a.title, a.url "
+        . "ORDER BY "
+        . "CASE WHEN p.status = 'failed' THEN 0 ELSE 1 END ASC, "
+        . "p.scheduled_at ASC, p.id ASC"
     );
     return $stmt->fetchAll();
 }
@@ -190,13 +200,38 @@ function list_scheduled_posts(PDO $pdo): array
 function list_post_deliveries(PDO $pdo, int $postId): array
 {
     $stmt = $pdo->prepare(
-        'SELECT d.id, d.account_id, d.status, d.error, a.platform, a.display_name, a.handle '
+        'SELECT d.id, d.account_id, d.status, d.error, d.sent_at, d.last_attempted_at, d.attempt_count, '
+        . 'a.platform, a.display_name, a.handle '
         . 'FROM deliveries d '
         . 'JOIN accounts a ON a.id = d.account_id '
         . 'WHERE d.post_id = :post_id '
         . 'ORDER BY d.id ASC'
     );
     $stmt->execute([':post_id' => $postId]);
+    return $stmt->fetchAll();
+}
+
+function find_latest_publisher_run(PDO $pdo): ?array
+{
+    $stmt = $pdo->query(
+        'SELECT id, trigger_type, status, started_at, finished_at, due_post_count, processed_delivery_count, '
+        . 'sent_count, failed_count, recovered_delivery_count, note, error '
+        . 'FROM publisher_runs ORDER BY started_at DESC, id DESC LIMIT 1'
+    );
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
+function list_recent_publisher_runs(PDO $pdo, int $limit = 8): array
+{
+    $limit = max(1, $limit);
+    $stmt = $pdo->prepare(
+        'SELECT id, trigger_type, status, started_at, finished_at, due_post_count, processed_delivery_count, '
+        . 'sent_count, failed_count, recovered_delivery_count, note, error '
+        . 'FROM publisher_runs ORDER BY started_at DESC, id DESC LIMIT :limit'
+    );
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->execute();
     return $stmt->fetchAll();
 }
 

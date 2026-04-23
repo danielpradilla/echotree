@@ -151,26 +151,145 @@ function posting_rate_limit_minutes(): int
     return $rateLimitMinutes < 1 ? 10 : $rateLimitMinutes;
 }
 
+function publishing_stale_minutes(): int
+{
+    $staleMinutes = (int) (getenv('ECHOTREE_PUBLISHING_STALE_MINUTES') ?: 15);
+    return $staleMinutes < 1 ? 15 : $staleMinutes;
+}
+
+function create_publisher_run(PDO $pdo, string $triggerType = 'cron'): int
+{
+    $stmt = $pdo->prepare(
+        'INSERT INTO publisher_runs (trigger_type, status, started_at) '
+        . "VALUES (:trigger_type, 'running', datetime('now'))"
+    );
+
+    run_sqlite_write_with_retry(static function () use ($stmt, $triggerType): void {
+        $stmt->execute([':trigger_type' => $triggerType]);
+    }, 'publisher_run_create');
+
+    return (int) $pdo->lastInsertId();
+}
+
+function complete_publisher_run(PDO $pdo, int $runId, string $status, array $stats = [], ?string $note = null, ?string $error = null): void
+{
+    $stmt = $pdo->prepare(
+        'UPDATE publisher_runs '
+        . 'SET status = :status, finished_at = datetime(\'now\'), due_post_count = :due_post_count, '
+        . 'processed_delivery_count = :processed_delivery_count, sent_count = :sent_count, '
+        . 'failed_count = :failed_count, recovered_delivery_count = :recovered_delivery_count, '
+        . 'note = :note, error = :error '
+        . 'WHERE id = :id'
+    );
+
+    run_sqlite_write_with_retry(static function () use ($stmt, $runId, $status, $stats, $note, $error): void {
+        $stmt->execute([
+            ':status' => $status,
+            ':due_post_count' => (int) ($stats['due_post_count'] ?? 0),
+            ':processed_delivery_count' => (int) ($stats['processed_delivery_count'] ?? 0),
+            ':sent_count' => (int) ($stats['sent_count'] ?? 0),
+            ':failed_count' => (int) ($stats['failed_count'] ?? 0),
+            ':recovered_delivery_count' => (int) ($stats['recovered_delivery_count'] ?? 0),
+            ':note' => $note,
+            ':error' => $error,
+            ':id' => $runId,
+        ]);
+    }, 'publisher_run_complete');
+}
+
+function record_publisher_run_snapshot(PDO $pdo, string $status, string $note, array $stats = [], ?string $error = null): void
+{
+    $stmt = $pdo->prepare(
+        'INSERT INTO publisher_runs '
+        . '(trigger_type, status, started_at, finished_at, due_post_count, processed_delivery_count, sent_count, failed_count, recovered_delivery_count, note, error) '
+        . 'VALUES (:trigger_type, :status, datetime(\'now\'), datetime(\'now\'), :due_post_count, :processed_delivery_count, :sent_count, :failed_count, :recovered_delivery_count, :note, :error)'
+    );
+
+    run_sqlite_write_with_retry(static function () use ($stmt, $status, $note, $stats, $error): void {
+        $stmt->execute([
+            ':trigger_type' => 'cron',
+            ':status' => $status,
+            ':due_post_count' => (int) ($stats['due_post_count'] ?? 0),
+            ':processed_delivery_count' => (int) ($stats['processed_delivery_count'] ?? 0),
+            ':sent_count' => (int) ($stats['sent_count'] ?? 0),
+            ':failed_count' => (int) ($stats['failed_count'] ?? 0),
+            ':recovered_delivery_count' => (int) ($stats['recovered_delivery_count'] ?? 0),
+            ':note' => $note,
+            ':error' => $error,
+        ]);
+    }, 'publisher_run_snapshot');
+}
+
+function recover_stale_publishing_deliveries(PDO $pdo, int $staleMinutes, ?callable $log = null): int
+{
+    $window = '-' . $staleMinutes . ' minutes';
+    $select = $pdo->prepare(
+        "SELECT id, post_id FROM deliveries "
+        . "WHERE status = 'publishing' "
+        . "AND COALESCE(last_attempted_at, created_at) <= datetime('now', :window)"
+    );
+    $select->execute([':window' => $window]);
+    $rows = $select->fetchAll();
+    if (!$rows) {
+        return 0;
+    }
+
+    $deliveryIds = array_map(static fn (array $row): int => (int) $row['id'], $rows);
+    $postIds = array_values(array_unique(array_map(static fn (array $row): int => (int) $row['post_id'], $rows)));
+    $deliveryPlaceholders = implode(', ', array_fill(0, count($deliveryIds), '?'));
+    $postPlaceholders = implode(', ', array_fill(0, count($postIds), '?'));
+
+    $resetStmt = $pdo->prepare(
+        "UPDATE deliveries SET status = 'pending', error = 'Recovered after stale publishing claim' "
+        . "WHERE id IN ($deliveryPlaceholders)"
+    );
+    run_sqlite_write_with_retry(static function () use ($resetStmt, $deliveryIds): void {
+        $resetStmt->execute($deliveryIds);
+    }, 'delivery_recover_stale');
+
+    $postStmt = $pdo->prepare(
+        "UPDATE posts SET status = 'scheduled' WHERE id IN ($postPlaceholders)"
+    );
+    run_sqlite_write_with_retry(static function () use ($postStmt, $postIds): void {
+        $postStmt->execute($postIds);
+    }, 'post_recover_stale');
+
+    publish_log($log, 'Recovered stale deliveries: ' . count($deliveryIds) . "\n");
+    return count($deliveryIds);
+}
+
 function publish_due_posts(?callable $log = null): void
 {
     $pdo = db_connection();
     $lockHandle = acquire_publish_lock();
     if ($lockHandle === null) {
+        record_publisher_run_snapshot($pdo, 'lock_skipped', 'Publisher already running; skipping.');
         publish_log($log, "Publisher already running; skipping.\n");
         return;
     }
 
     $rateLimitMinutes = posting_rate_limit_minutes();
+    $runId = create_publisher_run($pdo);
+    $stats = [
+        'due_post_count' => 0,
+        'processed_delivery_count' => 0,
+        'sent_count' => 0,
+        'failed_count' => 0,
+        'recovered_delivery_count' => 0,
+    ];
 
     try {
+        $stats['recovered_delivery_count'] = recover_stale_publishing_deliveries($pdo, publishing_stale_minutes(), $log);
         $posts = $pdo->query(
             "SELECT id, article_id, comment "
             . "FROM posts "
             . "WHERE status = 'scheduled' AND scheduled_at <= datetime('now') "
             . 'ORDER BY scheduled_at ASC'
         )->fetchAll();
+        $stats['due_post_count'] = count($posts);
 
         if (!$posts) {
+            complete_publisher_run($pdo, $runId, 'success', $stats, 'No due posts.');
             publish_log($log, "No due posts.\n");
             return;
         }
@@ -182,21 +301,26 @@ function publish_due_posts(?callable $log = null): void
                 (int) $post['article_id'],
                 (string) $post['comment'],
                 $rateLimitMinutes,
-                $log
+                $log,
+                $stats
             );
         }
+        complete_publisher_run($pdo, $runId, 'success', $stats, 'Processed due posts.');
+    } catch (Throwable $e) {
+        complete_publisher_run($pdo, $runId, 'failed', $stats, 'Publisher run failed.', $e->getMessage());
+        throw $e;
     } finally {
         flock($lockHandle, LOCK_UN);
         fclose($lockHandle);
     }
 }
 
-function publish_post_now(int $postId): void
+function publish_post_now(int $postId): bool
 {
     $pdo = db_connection();
     $lockHandle = acquire_publish_lock();
     if ($lockHandle === null) {
-        return;
+        return false;
     }
 
     $rateLimitMinutes = posting_rate_limit_minutes();
@@ -208,7 +332,7 @@ function publish_post_now(int $postId): void
         $postStmt->execute([':id' => $postId]);
         $post = $postStmt->fetch();
         if (!$post) {
-            return;
+            return false;
         }
 
         process_post_deliveries(
@@ -219,6 +343,7 @@ function publish_post_now(int $postId): void
             $rateLimitMinutes,
             null
         );
+        return true;
     } finally {
         flock($lockHandle, LOCK_UN);
         fclose($lockHandle);
@@ -231,7 +356,8 @@ function process_post_deliveries(
     int $articleId,
     string $comment,
     int $rateLimitMinutes,
-    ?callable $log
+    ?callable $log,
+    ?array &$stats = null
 ): void {
     $articleStmt = $pdo->prepare('SELECT url, title FROM articles WHERE id = :id');
     $articleStmt->execute([':id' => $articleId]);
@@ -274,7 +400,8 @@ function process_post_deliveries(
         }
 
         $claim = $pdo->prepare(
-            "UPDATE deliveries SET status = 'publishing', error = NULL "
+            "UPDATE deliveries SET status = 'publishing', error = NULL, last_attempted_at = datetime('now'), "
+            . "attempt_count = COALESCE(attempt_count, 0) + 1 "
             . "WHERE id = :id AND status IN ('pending', 'failed')"
         );
 
@@ -286,6 +413,9 @@ function process_post_deliveries(
             if ($claim->rowCount() === 0) {
                 publish_log($log, "Skipped: post {$postId} to {$platform} already claimed\n");
                 continue;
+            }
+            if ($stats !== null) {
+                $stats['processed_delivery_count'] = (int) ($stats['processed_delivery_count'] ?? 0) + 1;
             }
 
             $token = decrypt_token((string) $delivery['oauth_token_encrypted']);
@@ -324,6 +454,9 @@ function process_post_deliveries(
             );
 
             publish_log($log, "Sent: post {$postId} to {$platform}\n");
+            if ($stats !== null) {
+                $stats['sent_count'] = (int) ($stats['sent_count'] ?? 0) + 1;
+            }
         } catch (Throwable $e) {
             $isDeliveryAlreadyPublished = isset($externalId) && $externalId !== '';
             if ($isDeliveryAlreadyPublished) {
@@ -342,6 +475,9 @@ function process_post_deliveries(
             }, 'delivery_failed post=' . $postId . ' delivery=' . $deliveryId . ' platform=' . $platform);
 
             publish_log($log, "Failed: post {$postId} to {$platform} ({$e->getMessage()})\n");
+            if ($stats !== null) {
+                $stats['failed_count'] = (int) ($stats['failed_count'] ?? 0) + 1;
+            }
         }
     }
 

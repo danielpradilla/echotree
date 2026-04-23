@@ -52,6 +52,8 @@ function ensure_runtime_schema(PDO $pdo): void
 {
     ensure_feeds_schema($pdo);
     ensure_articles_schema($pdo);
+    ensure_posts_schema($pdo);
+    ensure_publisher_runs_schema($pdo);
 
     $pdo->exec(
         "CREATE TABLE IF NOT EXISTS share_history ("
@@ -76,6 +78,45 @@ function ensure_runtime_schema(PDO $pdo): void
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_share_history_shared_at ON share_history(shared_at)');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_share_history_url ON share_history(url)');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_share_history_post_id ON share_history(post_id)');
+}
+
+function ensure_posts_schema(PDO $pdo): void
+{
+    $columns = $pdo->query("PRAGMA table_info(deliveries)")->fetchAll();
+    $columnNames = array_map(static fn (array $column): string => (string) ($column['name'] ?? ''), $columns);
+
+    if (!in_array('attempt_count', $columnNames, true)) {
+        $pdo->exec('ALTER TABLE deliveries ADD COLUMN attempt_count INTEGER NOT NULL DEFAULT 0');
+    }
+
+    if (!in_array('last_attempted_at', $columnNames, true)) {
+        $pdo->exec('ALTER TABLE deliveries ADD COLUMN last_attempted_at TEXT NULL');
+    }
+
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_deliveries_post_id_status ON deliveries(post_id, status)');
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_deliveries_last_attempted_at ON deliveries(last_attempted_at)');
+}
+
+function ensure_publisher_runs_schema(PDO $pdo): void
+{
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS publisher_runs ("
+        . "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        . "trigger_type TEXT NOT NULL DEFAULT 'cron', "
+        . "status TEXT NOT NULL DEFAULT 'running', "
+        . "started_at TEXT NOT NULL DEFAULT (datetime('now')), "
+        . "finished_at TEXT NULL, "
+        . "due_post_count INTEGER NOT NULL DEFAULT 0, "
+        . "processed_delivery_count INTEGER NOT NULL DEFAULT 0, "
+        . "sent_count INTEGER NOT NULL DEFAULT 0, "
+        . "failed_count INTEGER NOT NULL DEFAULT 0, "
+        . "recovered_delivery_count INTEGER NOT NULL DEFAULT 0, "
+        . "note TEXT NULL, "
+        . "error TEXT NULL"
+        . ")"
+    );
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_publisher_runs_started_at ON publisher_runs(started_at DESC)');
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_publisher_runs_status ON publisher_runs(status)');
 }
 
 function ensure_articles_schema(PDO $pdo): void

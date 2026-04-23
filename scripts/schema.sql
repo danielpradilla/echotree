@@ -62,11 +62,28 @@ CREATE TABLE IF NOT EXISTS deliveries (
     account_id INTEGER NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
     sent_at TEXT NULL,
+    last_attempted_at TEXT NULL,
+    attempt_count INTEGER NOT NULL DEFAULT 0,
     external_id TEXT NULL,
     error TEXT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
     FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS publisher_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trigger_type TEXT NOT NULL DEFAULT 'cron',
+    status TEXT NOT NULL DEFAULT 'running',
+    started_at TEXT NOT NULL DEFAULT (datetime('now')),
+    finished_at TEXT NULL,
+    due_post_count INTEGER NOT NULL DEFAULT 0,
+    processed_delivery_count INTEGER NOT NULL DEFAULT 0,
+    sent_count INTEGER NOT NULL DEFAULT 0,
+    failed_count INTEGER NOT NULL DEFAULT 0,
+    recovered_delivery_count INTEGER NOT NULL DEFAULT 0,
+    note TEXT NULL,
+    error TEXT NULL
 );
 
 CREATE TABLE IF NOT EXISTS share_history (
@@ -104,6 +121,10 @@ CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status);
 CREATE INDEX IF NOT EXISTS idx_posts_scheduled_at ON posts(scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_deliveries_status ON deliveries(status);
 CREATE INDEX IF NOT EXISTS idx_deliveries_account_id ON deliveries(account_id);
+CREATE INDEX IF NOT EXISTS idx_deliveries_post_id_status ON deliveries(post_id, status);
+CREATE INDEX IF NOT EXISTS idx_deliveries_last_attempted_at ON deliveries(last_attempted_at);
+CREATE INDEX IF NOT EXISTS idx_publisher_runs_started_at ON publisher_runs(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_publisher_runs_status ON publisher_runs(status);
 CREATE INDEX IF NOT EXISTS idx_share_history_shared_at ON share_history(shared_at);
 CREATE INDEX IF NOT EXISTS idx_share_history_url ON share_history(url);
 CREATE INDEX IF NOT EXISTS idx_share_history_post_id ON share_history(post_id);
