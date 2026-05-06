@@ -20,10 +20,10 @@
         --field: #ffffff;
         --shadow: rgba(11, 93, 30, 0.12);
         --shadow-soft: rgba(11, 93, 30, 0.06);
-        --app-header-height: 52px;
-        --app-main-gutter: 28px;
-        --app-main-top-gap: 12px;
-        --app-main-bottom-gap: 40px;
+        --app-header-height: 42px;
+        --app-main-gutter: 18px;
+        --app-main-top-gap: 8px;
+        --app-main-bottom-gap: 28px;
       }
       * { box-sizing: border-box; }
       body {
@@ -50,7 +50,7 @@
       }
       header {
         border-bottom: 1px solid var(--border);
-        padding: 7px 16px;
+        padding: 5px 12px;
         background: rgba(255, 255, 255, 0.92);
         backdrop-filter: blur(12px);
         position: sticky;
@@ -170,7 +170,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 16px;
+        gap: 12px;
         flex-wrap: wrap;
       }
       .brand {
@@ -180,7 +180,7 @@
         flex-wrap: wrap;
       }
       .brand__name {
-        font-size: 19px;
+        font-size: 17px;
         letter-spacing: -0.03em;
       }
       .nav {
@@ -219,7 +219,7 @@
       .nav-toggle__icon::after { top: 6px; }
       .nav a {
         text-decoration: none;
-        padding: 6px 10px;
+        padding: 5px 9px;
         border-radius: 999px;
         border: 1px solid transparent;
       }
@@ -337,23 +337,23 @@
       }
       @media (max-width: 900px) {
         :root {
-          --app-header-height: 76px;
-          --app-main-gutter: 16px;
-          --app-main-top-gap: 14px;
-          --app-main-bottom-gap: 32px;
+          --app-header-height: 58px;
+          --app-main-gutter: 8px;
+          --app-main-top-gap: 6px;
+          --app-main-bottom-gap: 16px;
         }
         .topbar {
           align-items: center;
         }
         header {
-          padding: 14px 16px;
+          padding: 7px 10px;
         }
         main {
-          margin-top: 14px;
-          padding: 0 16px 32px;
+          margin-top: var(--app-main-top-gap);
+          padding: 0 var(--app-main-gutter) var(--app-main-bottom-gap);
         }
         .card, .hero-card {
-          padding: 20px;
+          padding: 16px;
         }
         .page-header {
           align-items: start;

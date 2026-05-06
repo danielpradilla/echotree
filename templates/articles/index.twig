@@ -14,7 +14,7 @@
       background: rgba(255, 255, 255, 0.72);
       border: 0;
       border-radius: 0;
-      box-shadow: 0 24px 48px rgba(11, 93, 30, 0.1);
+      box-shadow: none;
       overflow: hidden;
       height: 100%;
       display: flex;
@@ -26,22 +26,26 @@
       padding: 7px 10px;
       line-height: 1.1;
     }
+    .reader-app .inbox__toggle.is-active {
+      background: rgba(90, 170, 149, 0.16);
+      border-color: rgba(63, 141, 121, 0.46);
+      color: var(--ink);
+    }
     .reader-topbar {
       position: sticky;
       top: 0;
       z-index: 5;
       display: flex;
-      justify-content: space-between;
+      justify-content: flex-start;
       align-items: center;
-      gap: 12px;
-      padding: 4px 8px;
+      gap: 10px;
+      min-height: 38px;
+      padding: 5px 14px;
       border-bottom: 1px solid var(--line-soft);
       background: rgba(247, 248, 243, 0.94);
     }
     .reader-topbar__title {
-      font-size: 16px;
-      letter-spacing: -0.02em;
-      line-height: 1.1;
+      display: none;
     }
     .reader-notice-bar {
       display: flex;
@@ -61,8 +65,27 @@
     .reader-topbar__controls {
       display: flex;
       align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
+      gap: 7px;
+      flex: 1 1 auto;
+      flex-wrap: nowrap;
+      min-width: 0;
+    }
+    .reader-topbar button,
+    .reader-topbar .button-secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 8px;
+      height: 28px;
+      line-height: 1;
+    }
+    .reader-topbar .toggle-group {
+      margin-left: auto;
+      flex: 0 0 auto;
+    }
+    .reader-topbar .toggle-chip {
+      min-height: 28px;
+      padding: 4px 8px;
     }
     .toggle-group {
       display: inline-flex;
@@ -174,7 +197,7 @@
     }
     .reader-shell {
       display: grid;
-      grid-template-columns: 260px 360px minmax(0, 1fr);
+      grid-template-columns: 224px 330px minmax(0, 1fr);
       gap: 0;
       align-items: stretch;
       height: 100%;
@@ -198,16 +221,16 @@
     }
     .reader-panel--nav {
       border-right: 1px solid var(--line-soft);
-      padding: 10px 8px 14px;
+      padding: 6px 5px 10px;
     }
     .reader-panel--stories {
       border-right: 1px solid var(--line-soft);
-      padding: 10px 10px 14px;
+      padding: 6px 6px 10px;
       background: rgba(255, 255, 255, 0.92);
     }
     .reader-panel--main {
       background: rgba(255, 255, 255, 0.96);
-      padding: 8px 10px 10px;
+      padding: 6px 8px 8px;
       min-width: 0;
       overflow: hidden;
       height: 100%;
@@ -215,10 +238,10 @@
       flex-direction: column;
     }
     .reader-shell.is-nav-collapsed {
-      grid-template-columns: 0 360px minmax(0, 1fr);
+      grid-template-columns: 0 330px minmax(0, 1fr);
     }
     .reader-shell.is-stories-collapsed {
-      grid-template-columns: 260px 0 minmax(0, 1fr);
+      grid-template-columns: 224px 0 minmax(0, 1fr);
     }
     .reader-shell.is-nav-collapsed.is-stories-collapsed {
       grid-template-columns: minmax(0, 1fr);
@@ -232,12 +255,12 @@
     }
     .story-item,
     .site-item {
-      padding: 8px 7px;
+      padding: 6px 6px;
       border-bottom: 1px solid var(--line-soft);
     }
     .story-list--compact .story-item {
-      padding: 2px 4px;
-      margin-bottom: 2px;
+      padding: 5px 6px 5px 7px;
+      margin-bottom: 0;
     }
     .story-list--compact .story-title-row {
       gap: 6px;
@@ -257,11 +280,11 @@
     .story-item.active,
     .site-item.active {
       background: var(--selection);
-      border-radius: 10px;
+      border-radius: 6px;
     }
     .site-item {
       border-bottom: 0;
-      margin-bottom: 3px;
+      margin-bottom: 1px;
     }
     .reader-panel--nav.reader-panel--compact .site-item {
       padding: 2px 4px;
@@ -271,21 +294,21 @@
       gap: 4px;
     }
     .reader-panel--nav.reader-panel--compact .site-group + .site-group {
-      margin-top: 12px;
+      margin-top: 8px;
     }
     .reader-panel--nav.reader-panel--compact .site-group__header {
-      margin-bottom: 6px;
-      padding: 4px 6px;
+      margin-bottom: 3px;
+      padding: 3px 5px;
     }
     .site-group + .site-group {
-      margin-top: 16px;
+      margin-top: 10px;
     }
     .site-group__header {
       position: sticky;
       top: 0;
       z-index: 1;
-      margin: 0 0 8px;
-      padding: 6px 8px;
+      margin: 0 0 4px;
+      padding: 4px 6px;
       font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.08em;
@@ -297,12 +320,12 @@
     .site-link {
       display: grid !important;
       grid-template-columns: 20px minmax(0, 1fr);
-      gap: 8px;
+      gap: 6px;
       align-items: start;
     }
     .site-favicon {
-      width: 16px;
-      height: 16px;
+      width: 15px;
+      height: 15px;
       border-radius: 4px;
       background: rgba(90, 170, 149, 0.14);
       border: 1px solid rgba(11, 93, 30, 0.08);
@@ -332,8 +355,8 @@
     }
     .story-item {
       border: 1px solid transparent;
-      border-radius: 10px;
-      margin-bottom: 6px;
+      border-radius: 0;
+      margin-bottom: 0;
       background: rgba(255, 255, 255, 0.78);
     }
     .story-item.active {
@@ -370,7 +393,7 @@
     .story-card-link {
       display: grid !important;
       grid-template-columns: 92px minmax(0, 1fr);
-      gap: 10px;
+      gap: 8px;
       align-items: start;
     }
     .story-thumb {
@@ -414,8 +437,36 @@
       overflow: hidden;
     }
     .story-list--compact .story-card-link {
-      grid-template-columns: 52px minmax(0, 1fr);
-      gap: 10px;
+      grid-template-columns: 10px minmax(0, 1fr);
+      gap: 7px;
+      align-items: baseline;
+    }
+    .story-list--compact .story-card-link::before {
+      content: "";
+      width: 5px;
+      height: 5px;
+      margin-top: 0.55em;
+      border: 1px solid currentColor;
+      border-radius: 999px;
+      color: var(--muted);
+    }
+    .story-list--compact .story-thumb {
+      display: none;
+    }
+    .story-list--compact .story-title-row strong {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+    }
+    .story-list--compact .story-title-row {
+      align-items: start;
+    }
+    .story-list--compact .count-pill {
+      min-width: auto;
+      padding: 1px 5px;
+      font-size: 10px;
+      line-height: 1.3;
     }
     .article-source {
       display: flex;
@@ -434,21 +485,21 @@
     .reader-viewer {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 10px;
       min-height: 0;
       min-width: 0;
       height: 100%;
     }
     .reader-stage {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 300px;
+      grid-template-columns: minmax(0, 1fr) 276px;
       gap: 0;
       align-items: stretch;
       height: 100%;
     }
     .reader-stage__article {
       min-width: 0;
-      padding-right: 14px;
+      padding-right: 10px;
       min-height: 0;
       display: flex;
       flex-direction: column;
@@ -458,7 +509,7 @@
       position: sticky;
       top: 0;
       border-left: 1px solid var(--line-soft);
-      padding-left: 14px;
+      padding-left: 10px;
       align-self: start;
     }
     .inbox__iframe {
@@ -468,7 +519,7 @@
       min-height: 0;
       display: block;
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 6px;
       background: var(--card-solid);
     }
     .reader-original {
@@ -482,12 +533,12 @@
       min-height: 0;
       overflow: auto;
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 6px;
       background: #fffaf2;
-      padding: 28px;
+      padding: 18px;
     }
     .reader-inline__body {
-      max-width: 720px;
+      max-width: 760px;
       margin: 0 auto;
       color: #1e1a16;
       font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
@@ -526,9 +577,9 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 12px;
-      min-height: 62px;
-      padding: 4px 0 10px;
+      gap: 8px;
+      min-height: 44px;
+      padding: 3px 0 6px;
       border-bottom: 1px solid var(--line-soft);
     }
     .reader-header-band__main {
@@ -536,19 +587,19 @@
       display: flex;
       flex-direction: column;
       justify-content: center;
-      gap: 6px;
+      gap: 3px;
     }
     .reader-header-band__actions {
       display: flex;
       align-items: center;
       justify-content: flex-end;
-      gap: 8px;
+      gap: 5px;
       flex-wrap: wrap;
       align-self: center;
     }
     .story-toolbar {
-      gap: 10px;
-      margin-bottom: 10px;
+      gap: 6px;
+      margin-bottom: 6px;
       position: sticky;
       top: 0;
       z-index: 2;
@@ -583,7 +634,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 8px 14px;
+      padding: 5px 8px;
       border: 1px solid var(--border);
       border-radius: 999px;
       background: transparent;
@@ -670,15 +721,43 @@
       font-size: 12px;
     }
     .reader-meta-card {
-      padding: 0 4px 10px;
+      padding: 0 2px 6px;
       border: 0;
       border-radius: 0;
       background: transparent;
       box-shadow: none;
       margin-bottom: 10px;
     }
+    .reader-meta-card .reader-header-band {
+      display: grid;
+      grid-template-columns: 1fr;
+      align-items: start;
+      gap: 6px;
+    }
+    .reader-meta-card .reader-header-band__actions {
+      min-width: 0;
+      justify-content: start;
+      width: 100%;
+    }
+    .reader-meta-card .inbox__meta .actions-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      justify-content: start;
+      gap: 5px;
+      width: 100%;
+    }
+    .reader-meta-card .reader-mode-links,
+    .reader-meta-card .inline-form {
+      display: contents;
+    }
+    .reader-meta-card .reader-mode-link,
+    .reader-meta-card button {
+      min-height: 28px;
+      width: 100%;
+      white-space: nowrap;
+    }
     .reader-stage__compose .card {
-      padding: 0 14px 10px;
+      padding: 0 8px 8px;
       border: 0;
       border-radius: 0;
       background: transparent;
@@ -692,28 +771,56 @@
     .reader-meta-card .article-source {
       margin-top: 0;
     }
+    @media (min-width: 901px) and (max-width: 1180px) {
+      .reader-panel--main {
+        overflow: auto;
+      }
+      .reader-stage {
+        display: block;
+        height: auto;
+      }
+      .reader-stage__article {
+        padding-right: 0;
+        height: calc(100vh - var(--app-header-height) - 78px);
+        min-height: 540px;
+      }
+      .reader-stage__compose {
+        position: static;
+        border-left: 0;
+        border-top: 1px solid var(--line-soft);
+        padding: 10px 0 0;
+        margin-top: 10px;
+      }
+    }
     @media (max-width: 900px) {
       .reader-topbar {
-        padding: 4px 6px;
+        min-height: 38px;
+        padding: 3px 6px;
+        overflow-x: auto;
+        scrollbar-width: none;
       }
       .reader-page {
-        position: static;
-        inset: auto;
-        overflow: visible;
+        position: fixed;
+        top: var(--app-header-height);
+        right: 0;
+        bottom: 0;
+        left: 0;
+        overflow: hidden;
       }
       .reader-app {
-        border: 1px solid rgba(11, 93, 30, 0.1);
-        border-radius: 14px;
+        border: 0;
+        border-radius: 0;
       }
       .reader-page,
       .reader-app,
       .reader-shell,
       .reader-viewer {
-        height: auto;
+        height: 100%;
       }
       .reader-shell {
         grid-template-columns: 1fr;
         position: relative;
+        min-height: 0;
       }
       .reader-mobile-backdrop {
         display: none;
@@ -729,16 +836,16 @@
       .reader-panel--nav,
       .reader-panel--stories {
         position: absolute;
-        top: 10px;
-        left: 10px;
-        right: 10px;
+        top: 6px;
+        left: 6px;
+        right: 6px;
         z-index: 20;
         height: auto;
-        max-height: min(72vh, calc(100vh - var(--app-header-height) - 96px));
+        max-height: min(78dvh, calc(100dvh - var(--app-header-height) - 54px));
         overflow: auto;
         border: 1px solid var(--border);
-        border-radius: 16px;
-        padding-right: 0;
+        border-radius: 8px;
+        padding: 6px;
         box-shadow: 0 18px 40px var(--shadow);
       }
       .reader-panel--nav.is-collapsed,
@@ -746,26 +853,95 @@
         display: none;
       }
       .reader-panel--main {
-        padding: 14px 12px 18px;
-        height: auto;
+        padding: 6px 8px 8px;
+        height: 100%;
+        min-height: 0;
+        overflow: auto;
       }
       .reader-stage {
         grid-template-columns: 1fr;
         height: auto;
+        min-height: 0;
       }
       .reader-stage__compose {
         position: static;
         border-left: 0;
         padding-left: 0;
-        margin-top: 14px;
+        margin-top: 8px;
       }
       .reader-stage__article {
         padding-right: 0;
+        height: calc(100dvh - var(--app-header-height) - 52px);
+        min-height: min(420px, calc(100dvh - var(--app-header-height) - 52px));
       }
-      .inbox__iframe { height: 50vh; }
+      .reader-inline {
+        padding: 14px;
+      }
+      .reader-inline__body {
+        max-width: none;
+        line-height: 1.65;
+      }
+      .reader-inline__body p {
+        margin-bottom: 14px;
+      }
+      .reader-header-band {
+        min-height: 38px;
+      }
+      .reader-header-band__actions {
+        justify-content: flex-start;
+      }
+      .reader-meta-card .reader-header-band {
+        display: block;
+      }
+      .reader-meta-card .article-source {
+        gap: 5px;
+        font-size: 11px;
+      }
+      .reader-meta-card [data-reader-feed-host] {
+        display: none;
+      }
+      .reader-meta-card .reader-header-band__actions {
+        display: block;
+        width: 100%;
+        margin-top: 8px;
+      }
+      .inbox__meta .actions-row {
+        gap: 4px;
+      }
+      .reader-meta-card .inbox__meta .actions-row {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        align-items: stretch;
+        width: 100%;
+      }
+      .reader-mode-link {
+        padding: 5px 7px;
+      }
+      .reader-meta-card .reader-mode-link,
+      .reader-meta-card button {
+        width: 100%;
+        min-height: 30px;
+        padding: 5px 4px;
+        font-size: 12px;
+      }
+      .reader-stage__compose .card {
+        padding: 0 2px 6px;
+      }
+      .inbox__iframe { height: 100%; }
       .inbox__toggle { display: inline-flex; }
       .story-list--grid {
         grid-template-columns: 1fr;
+      }
+      .reader-topbar__title {
+        display: none;
+      }
+      .reader-topbar__controls {
+        flex-wrap: nowrap;
+        min-width: max-content;
+      }
+      .reader-app button,
+      .reader-app .button-secondary {
+        padding: 6px 8px;
+        white-space: nowrap;
       }
     }
   </style>
@@ -798,8 +974,8 @@
         <div class="reader-topbar__title">Reader</div>
       </div>
       <div class="reader-topbar__controls">
-        <button type="button" class="inbox__toggle button-secondary" data-toggle-target="nav" style="display: none;">Show sites</button>
-        <button type="button" class="inbox__toggle button-secondary" data-toggle-target="stories" style="display: none;">Show stories</button>
+        <button type="button" class="inbox__toggle button-secondary" data-toggle-target="nav" style="display: none;" aria-pressed="false">Sites</button>
+        <button type="button" class="inbox__toggle button-secondary" data-toggle-target="stories" style="display: none;" aria-pressed="false">Stories</button>
         <form method="post" action="{{ base_path }}/feeds/fetch-all" class="inline-form">
           <input type="hidden" name="_csrf" value="{{ csrf }}" />
           <input type="hidden" name="return_to" value="{{ current_reader_url }}" />
@@ -991,6 +1167,8 @@
                   </div>
                   <div class="inbox__meta reader-header-band__actions">
                     <div class="actions-row">
+                    <a href="#" class="reader-mode-link button-secondary reader-step-link is-disabled" data-reader-prev aria-disabled="true">Previous</a>
+                    <a href="#" class="reader-mode-link button-secondary reader-step-link is-disabled" data-reader-next aria-disabled="true">Next</a>
                     <span class="reader-mode-links">
                       <a
                         href="{{ selected.mode_urls.feed|default(base_path ~ '/articles?' ~ (active_feed_id ? 'feed_id=' ~ active_feed_id ~ '&' : '') ~ 'selected=' ~ selected.id ~ '&mode=feed&density=' ~ density ~ '&layout=' ~ layout) }}"
@@ -1237,9 +1415,9 @@
             ? panel.classList.contains('is-collapsed')
             : shell && shell.classList.contains(target === 'nav' ? 'is-nav-collapsed' : 'is-stories-collapsed');
           toggle.style.display = 'inline-flex';
-          toggle.textContent = collapsed
-            ? 'Show ' + (target === 'nav' ? 'sites' : 'stories')
-            : 'Hide ' + (target === 'nav' ? 'sites' : 'stories');
+          toggle.textContent = target === 'nav' ? 'Sites' : 'Stories';
+          toggle.setAttribute('aria-pressed', collapsed ? 'false' : 'true');
+          toggle.classList.toggle('is-active', !collapsed);
           if (!isMobile()) {
             panel.classList.remove('is-collapsed');
           }
@@ -1314,6 +1492,8 @@
       var readerFeedHost = document.querySelector('[data-reader-feed-host]');
       var readerModeLinks = Array.prototype.slice.call(document.querySelectorAll('[data-reader-mode-link]'));
       var readerOpenLink = document.querySelector('[data-reader-open-link]');
+      var readerPrevLink = document.querySelector('[data-reader-prev]');
+      var readerNextLink = document.querySelector('[data-reader-next]');
       var readerArchiveForm = document.querySelector('[data-reader-archive-form]');
       var readerOriginalShell = document.querySelector('[data-reader-original-shell]');
       var readerIframe = document.querySelector('[data-reader-iframe]');
@@ -1354,6 +1534,33 @@
             item.style.boxShadow = '';
           }
         });
+        updateArticleNav(articleId);
+      }
+
+      function setStepLink(control, targetLink) {
+        if (!control) return;
+        if (!targetLink) {
+          control.href = '#';
+          control.removeAttribute('data-target-article-id');
+          control.setAttribute('aria-disabled', 'true');
+          control.classList.add('is-disabled');
+          return;
+        }
+        control.href = targetLink.href;
+        control.setAttribute('data-target-article-id', targetLink.getAttribute('data-article-id') || '');
+        control.setAttribute('aria-disabled', 'false');
+        control.classList.remove('is-disabled');
+      }
+
+      function updateArticleNav(articleId) {
+        var currentIndex = -1;
+        storyLinks.forEach(function (link, index) {
+          if (String(articleId) === link.getAttribute('data-article-id')) {
+            currentIndex = index;
+          }
+        });
+        setStepLink(readerPrevLink, currentIndex > 0 ? storyLinks[currentIndex - 1] : null);
+        setStepLink(readerNextLink, currentIndex >= 0 && currentIndex < storyLinks.length - 1 ? storyLinks[currentIndex + 1] : null);
       }
 
       function ensureReaderIframe(title) {
@@ -1456,6 +1663,37 @@
             window.location.href = link.href;
           });
       }
+
+      function findStoryLinkByArticleId(articleId) {
+        var matched = null;
+        storyLinks.forEach(function (link) {
+          if (!matched && String(articleId) === link.getAttribute('data-article-id')) {
+            matched = link;
+          }
+        });
+        return matched;
+      }
+
+      function handleStepClick(event) {
+        var control = event.currentTarget;
+        if (!control || control.classList.contains('is-disabled') || control.getAttribute('aria-disabled') === 'true') {
+          event.preventDefault();
+          return;
+        }
+        var articleId = control.getAttribute('data-target-article-id');
+        var link = articleId ? findStoryLinkByArticleId(articleId) : null;
+        if (!link) return;
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+          return;
+        }
+        event.preventDefault();
+        fetchAndApplyStory(link, false);
+      }
+
+      if (readerPrevLink) readerPrevLink.addEventListener('click', handleStepClick);
+      if (readerNextLink) readerNextLink.addEventListener('click', handleStepClick);
+      updateArticleNav({{ selected ? selected.id : 'null' }});
+      window.echotreeUpdateReaderNav = updateArticleNav;
 
       function isTypingTarget(node) {
         if (!node) return false;
@@ -1655,6 +1893,9 @@
             }
             if (commentLength) {
               commentLength.textContent = '0';
+            }
+            if (window.echotreeUpdateReaderNav) {
+              window.echotreeUpdateReaderNav(article.id);
             }
             mode = article.mode || mode;
             if (article.return_to && window.history && window.history.replaceState) {
