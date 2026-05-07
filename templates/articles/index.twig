@@ -283,11 +283,12 @@
       border-radius: 6px;
     }
     .site-item {
+      position: relative;
       border-bottom: 0;
       margin-bottom: 1px;
     }
     .reader-panel--nav.reader-panel--compact .site-item {
-      padding: 2px 4px;
+      padding: 2px 4px 2px 8px;
       margin-bottom: 1px;
     }
     .reader-panel--nav.reader-panel--compact .site-link {
@@ -319,7 +320,7 @@
     }
     .site-link {
       display: grid !important;
-      grid-template-columns: 20px minmax(0, 1fr);
+      grid-template-columns: 16px minmax(0, 1fr);
       gap: 6px;
       align-items: start;
     }
@@ -351,7 +352,17 @@
       line-height: 1.25;
     }
     .site-item.active {
-      box-shadow: inset 3px 0 0 #84b316;
+      --site-accent: #84b316;
+    }
+    .site-item.active::before {
+      content: "";
+      position: absolute;
+      top: 3px;
+      bottom: 3px;
+      left: 2px;
+      width: 3px;
+      border-radius: 999px;
+      background: var(--site-accent);
     }
     .story-item {
       border: 1px solid transparent;
@@ -1040,8 +1051,8 @@
               <div class="site-group__header">{{ folder_label }}</div>
             {% set current_folder = folder_label %}
           {% endif %}
-          <div class="site-item {% if active_feed_id == feed.id %}active{% endif %}">
-            <a class="site-link" data-site-link href="{{ base_path }}/articles?feed_id={{ feed.id }}{% if selected and selected.feed_id == feed.id %}&selected={{ selected.id }}{% endif %}&mode={{ mode }}&density={{ density }}&layout={{ layout }}" style="box-shadow: inset 3px 0 0 {{ feed.accent_color }};">
+          <div class="site-item {% if active_feed_id == feed.id %}active{% endif %}" style="--site-accent: {{ feed.accent_color }};">
+            <a class="site-link" data-site-link href="{{ base_path }}/articles?feed_id={{ feed.id }}{% if selected and selected.feed_id == feed.id %}&selected={{ selected.id }}{% endif %}&mode={{ mode }}&density={{ density }}&layout={{ layout }}">
               {% if feed.favicon_url %}
                 <img class="site-favicon" src="{{ feed.favicon_url }}" alt="" loading="lazy" />
               {% else %}
