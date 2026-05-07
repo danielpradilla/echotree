@@ -10,18 +10,14 @@ error_reporting(E_ALL & ~E_DEPRECATED);
 
 require __DIR__ . '/../app/env.php';
 load_env(__DIR__ . '/../.env');
+require __DIR__ . '/../app/session.php';
 
 require __DIR__ . '/../vendor/autoload.php';
 
 $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
     || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] === '443');
-$sessionLifetime = (int) (getenv('ECHOTREE_SESSION_LIFETIME_SECONDS') ?: 0);
-if ($sessionLifetime < 0) {
-    $sessionLifetime = 0;
-}
-if ($sessionLifetime > 0) {
-    ini_set('session.gc_maxlifetime', (string) $sessionLifetime);
-}
+$sessionLifetime = session_lifetime_seconds();
+ini_set('session.gc_maxlifetime', (string) session_gc_lifetime_seconds());
 session_set_cookie_params([
     'lifetime' => $sessionLifetime,
     'path' => '/',

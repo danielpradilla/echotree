@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/session.php';
 
 function remember_cookie_name(): string
 {
@@ -15,15 +16,9 @@ function is_request_secure(): bool
         || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] === '443');
 }
 
-function session_lifetime_seconds(): int
-{
-    $seconds = (int) (getenv('ECHOTREE_SESSION_LIFETIME_SECONDS') ?: 0);
-    return $seconds < 0 ? 0 : $seconds;
-}
-
 function remember_me_lifetime_seconds(): int
 {
-    $seconds = (int) (getenv('ECHOTREE_REMEMBER_ME_SECONDS') ?: 2592000);
+    $seconds = (int) (getenv('ECHOTREE_REMEMBER_ME_SECONDS') ?: ECHOTREE_DEFAULT_SESSION_LIFETIME_SECONDS);
     return $seconds < 0 ? 0 : $seconds;
 }
 
@@ -271,8 +266,6 @@ function issue_remember_me_token(int $userId): void
     retry_db_write(function () use ($userId, $hash, $expiresAt) {
         $pdo = db_connection();
         ensure_auth_tables($pdo);
-        $pdo->prepare('DELETE FROM remember_tokens WHERE user_id = :user_id')
-            ->execute([':user_id' => $userId]);
         $pdo->prepare('DELETE FROM remember_tokens WHERE expires_at <= datetime(\'now\')')->execute();
         $insert = $pdo->prepare(
             'INSERT INTO remember_tokens (user_id, token_hash, expires_at, last_used_at) '
