@@ -47,9 +47,9 @@
     .stale-dot {
       width: 9px;
       height: 9px;
-      border-radius: 999px;
-      background: #cc3d2b;
-      box-shadow: 0 0 0 3px rgba(204, 61, 43, 0.14);
+      border-radius: var(--radius-pill);
+      background: var(--stale);
+      box-shadow: 0 0 0 3px var(--stale-soft);
       flex: 0 0 auto;
     }
     .feeds-table__url {
@@ -80,7 +80,7 @@
       margin-top: 6px;
       font-size: 12px;
       line-height: 1.35;
-      color: #b14b2d;
+      color: var(--danger);
       white-space: normal;
     }
     .feeds-table__actions {
@@ -107,7 +107,7 @@
       justify-content: center;
       padding: 4px 8px;
       border: 1px solid var(--border-color);
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       text-decoration: none;
       color: var(--accent-color);
       background: var(--surface-color);
@@ -115,7 +115,7 @@
     .feeds-table__actions-row button {
       width: auto;
       padding: 4px 8px;
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
     }
     .feeds-table__actions-row form {
       width: auto;

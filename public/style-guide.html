@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>EchoTree Style Guide</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --bg-accent: #f6fbf3;
+        --ink: #0b5d1e;
+        --accent: #5aaa95;
+        --accent-strong: #3f8d79;
+        --muted: #467363;
+        --card: rgba(255, 255, 255, 0.96);
+        --card-solid: #ffffff;
+        --surface-panel: rgba(255, 255, 255, 0.72);
+        --surface-panel-strong: rgba(255, 255, 255, 0.92);
+        --surface-panel-warm: rgba(255, 253, 249, 0.72);
+        --surface-hover: rgba(246, 251, 243, 0.92);
+        --border: rgba(11, 93, 30, 0.16);
+        --line-soft: rgba(90, 170, 149, 0.24);
+        --selection: rgba(194, 232, 18, 0.24);
+        --field: #ffffff;
+        --shadow: rgba(11, 93, 30, 0.12);
+        --shadow-soft: rgba(11, 93, 30, 0.06);
+        --on-accent: #fff8f2;
+        --danger: #a12a2a;
+        --danger-soft: rgba(191, 62, 62, 0.12);
+        --warning: #7a6100;
+        --warning-soft: rgba(247, 203, 21, 0.18);
+        --neutral-soft: rgba(70, 115, 99, 0.12);
+        --stale: #cc3d2b;
+        --stale-soft: rgba(204, 61, 43, 0.14);
+        --font-xs: 9px;
+        --font-sm: 11px;
+        --font-md: 13px;
+        --font-lg: 15px;
+        --font-xl: 18px;
+        --radius-card: 18px;
+        --radius-panel: 16px;
+        --radius-control: 10px;
+        --radius-compact: 8px;
+        --radius-pill: 999px;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+        background:
+          radial-gradient(circle at top left, rgba(247, 203, 21, 0.12), transparent 24%),
+          radial-gradient(circle at bottom right, rgba(90, 170, 149, 0.08), transparent 30%),
+          linear-gradient(180deg, var(--bg) 0%, var(--bg-accent) 100%);
+        color: var(--ink);
+      }
+      main {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 18px;
+      }
+      h1, h2, h3, p { margin-top: 0; }
+      h1, h2, h3 { letter-spacing: -0.02em; }
+      h1 { margin-bottom: 4px; font-size: clamp(28px, 4vw, 44px); }
+      h2 { margin-bottom: 12px; font-size: 20px; }
+      h3 { margin-bottom: 8px; font-size: var(--font-md); }
+      p { line-height: 1.45; }
+      a { color: var(--accent); text-underline-offset: 0.18em; }
+      button, .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--accent);
+        color: var(--on-accent);
+        border: 1px solid var(--accent);
+        padding: 5px 10px 4px;
+        border-radius: var(--radius-control);
+        cursor: pointer;
+        text-decoration: none;
+        font: inherit;
+        font-size: var(--font-sm);
+        line-height: 1;
+        min-height: 24px;
+      }
+      button:hover, .button:hover { background: var(--accent-strong); border-color: var(--accent-strong); color: var(--on-accent); }
+      .button-secondary {
+        background: transparent;
+        color: var(--ink);
+        border-color: var(--border);
+      }
+      input, select, textarea {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-control);
+        padding: 8px 10px;
+        font: inherit;
+        background: var(--field);
+        color: var(--ink);
+      }
+      label { display: block; font-size: var(--font-sm); color: var(--muted); }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+      th { color: var(--muted); font-size: var(--font-xs); text-transform: uppercase; letter-spacing: 0.08em; }
+      code {
+        padding: 1px 5px;
+        border-radius: 6px;
+        background: rgba(90, 170, 149, 0.08);
+        color: var(--accent-strong);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: var(--font-xs);
+      }
+
+      .sg-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 18px;
+        align-items: end;
+        margin-bottom: 16px;
+      }
+      .sg-meta {
+        max-width: 62ch;
+        margin-bottom: 0;
+        color: var(--muted);
+        font-size: var(--font-sm);
+      }
+      .sg-grid {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .sg-card {
+        grid-column: span 4;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        padding: 14px;
+        box-shadow: 0 14px 32px var(--shadow-soft);
+      }
+      .sg-card--wide { grid-column: span 8; }
+      .sg-card--full { grid-column: 1 / -1; }
+      .sg-card--compact { padding: 12px; }
+      .sg-strip {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .sg-swatch {
+        min-height: 74px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-control);
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        overflow: hidden;
+      }
+      .sg-swatch strong, .sg-swatch span {
+        display: block;
+        width: fit-content;
+        max-width: 100%;
+        padding: 1px 5px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.84);
+        color: #1e1a16;
+        font-size: var(--font-xs);
+        overflow-wrap: anywhere;
+      }
+      .sg-swatch span { margin-top: 3px; color: var(--muted); }
+      .sg-pill-row, .actions-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .muted { color: var(--muted); }
+      .accent { color: var(--accent); }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        padding: 18px;
+        box-shadow: 0 18px 40px var(--shadow);
+      }
+      .hero-card {
+        padding: 22px;
+        background: rgba(255, 255, 255, 0.98);
+        border-color: rgba(90, 170, 149, 0.22);
+      }
+      .eyebrow {
+        display: inline-block;
+        margin-bottom: 8px;
+        color: #3f8d79;
+        font-size: var(--font-xs);
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+      .badge,
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: var(--radius-pill);
+        background: rgba(194, 232, 18, 0.22);
+        color: #0b5d1e;
+        font-size: var(--font-xs);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .badge--compact,
+      .scheduled__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: var(--radius-pill);
+        padding: 2px 8px;
+        font-size: var(--font-xs);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .badge--neutral,
+      .scheduled__badge--neutral { background: var(--neutral-soft); color: var(--muted); }
+      .badge--success,
+      .scheduled__badge--success { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-strong); }
+      .badge--warning,
+      .scheduled__badge--warning { background: var(--warning-soft); color: var(--warning); }
+      .badge--danger,
+      .scheduled__badge--danger { background: var(--danger-soft); color: var(--danger); }
+      .empty-state {
+        padding: 18px;
+        border: 1px dashed var(--border);
+        border-radius: var(--radius-panel);
+        background: rgba(255, 250, 243, 0.55);
+      }
+      .table-shell {
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-panel);
+        overflow: hidden;
+        background: var(--surface-panel-warm);
+      }
+      .toggle-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-control);
+        background: rgba(255, 255, 255, 0.88);
+      }
+      .toggle-chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-width: 34px;
+        padding: 5px 8px;
+        border: 1px solid transparent;
+        border-radius: var(--radius-compact);
+        background: transparent;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: var(--font-xs);
+        line-height: 1;
+      }
+      .toggle-chip.is-selected { background: var(--accent); border-color: var(--accent); color: #fff; }
+      .sg-class-list {
+        columns: 4 190px;
+        column-gap: 18px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .sg-class-list li { break-inside: avoid; margin-bottom: 5px; }
+      .sg-note {
+        margin: 0;
+        padding: 10px 12px;
+        border-left: 4px solid var(--accent);
+        background: rgba(246, 251, 243, 0.92);
+        color: var(--muted);
+      }
+      .sg-extension {
+        color: var(--ink);
+      }
+      .sg-extension .button {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: var(--on-accent);
+      }
+      .sg-extension .secondary {
+        background: #fff;
+        color: var(--ink);
+        border-color: var(--border);
+      }
+      .sg-extension .url {
+        font-size: var(--font-xs);
+        background: var(--surface-hover);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-control);
+        padding: 8px;
+        word-break: break-all;
+      }
+      .sg-extension .muted { color: var(--muted); }
+      .form-demo {
+        display: grid;
+        gap: 10px;
+      }
+      .form-demo__row {
+        display: grid;
+        grid-template-columns: 76px minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
+      }
+      .form-demo__row label {
+        margin: 0;
+      }
+      .form-demo__row--textarea {
+        align-items: start;
+      }
+      .form-demo__row--textarea label {
+        padding-top: 7px;
+      }
+      .form-demo input,
+      .form-demo select,
+      .form-demo textarea {
+        width: 100%;
+      }
+      .type-scale {
+        display: grid;
+        gap: 10px;
+      }
+      .type-row {
+        display: grid;
+        grid-template-columns: 120px minmax(0, 1fr) 160px;
+        gap: 12px;
+        align-items: baseline;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .type-row:last-child { border-bottom: 0; }
+      .type-token {
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: var(--font-xs);
+      }
+      .type-sample--xs { font-size: var(--font-xs); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+      .type-sample--sm { font-size: var(--font-sm); }
+      .type-sample--md { font-size: var(--font-md); line-height: 1.45; }
+      .type-sample--lg { font-size: var(--font-lg); line-height: 1.65; }
+      .type-sample--xl { font-size: var(--font-xl); font-weight: 700; line-height: 1.1; }
+      .article-example {
+        max-width: 720px;
+        margin: 0 auto;
+      }
+      .article-example__meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+      .article-example h1 {
+        max-width: 16ch;
+        margin: 0 0 12px;
+        font-size: clamp(32px, 5vw, 54px);
+        line-height: 0.96;
+      }
+      .article-example__dek {
+        max-width: 58ch;
+        font-size: var(--font-lg);
+        line-height: 1.5;
+        color: var(--muted);
+      }
+      .article-example__body {
+        margin-top: 22px;
+        padding-top: 20px;
+        border-top: 1px solid var(--line-soft);
+        font-size: var(--font-lg);
+        line-height: 1.72;
+      }
+      .article-example__body h2 {
+        margin: 28px 0 8px;
+        font-size: var(--font-xl);
+        line-height: 1.15;
+      }
+      .article-example__body p {
+        margin-bottom: 16px;
+      }
+      .article-example blockquote {
+        margin: 20px 0;
+        padding: 12px 16px;
+        border-left: 4px solid var(--accent);
+        background: var(--surface-hover);
+        color: var(--muted);
+      }
+      .article-example__aside {
+        margin-top: 18px;
+        padding: 12px;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-panel);
+        background: var(--surface-panel-warm);
+        font-size: var(--font-sm);
+        line-height: 1.45;
+      }
+
+      @media (max-width: 880px) {
+        main { padding: 10px; }
+        .sg-header { grid-template-columns: 1fr; }
+        .sg-card, .sg-card--wide { grid-column: 1 / -1; }
+        .sg-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .type-row { grid-template-columns: 1fr; gap: 4px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="sg-header">
+        <div>
+          <span class="eyebrow">EchoTree UI Audit</span>
+          <h1>Single Page Style Guide</h1>
+          <p class="sg-meta">A compact inventory of the current app styling: root tokens, repeated components, page-specific class families, extension styling, and consistency rules.</p>
+        </div>
+        <div class="sg-pill-row">
+          <span class="status-pill">templates/layout.twig</span>
+          <span class="badge badge--compact badge--neutral">Static review file</span>
+        </div>
+      </section>
+
+      <section class="sg-grid">
+        <article class="sg-card sg-card--wide">
+          <h2>Color Tokens</h2>
+          <div class="sg-strip">
+            <div class="sg-swatch" style="background: var(--bg);"><strong>--bg</strong><span>#ffffff</span></div>
+            <div class="sg-swatch" style="background: var(--bg-accent);"><strong>--bg-accent</strong><span>#f6fbf3</span></div>
+            <div class="sg-swatch" style="background: var(--ink);"><strong>--ink</strong><span>#0b5d1e</span></div>
+            <div class="sg-swatch" style="background: var(--accent);"><strong>--accent</strong><span>#5aaa95</span></div>
+            <div class="sg-swatch" style="background: var(--accent-strong);"><strong>--accent-strong</strong><span>#3f8d79</span></div>
+            <div class="sg-swatch" style="background: var(--muted);"><strong>--muted</strong><span>#467363</span></div>
+            <div class="sg-swatch" style="background: var(--card);"><strong>--card</strong><span>rgba white .96</span></div>
+            <div class="sg-swatch" style="background: var(--border);"><strong>--border</strong><span>ink .16</span></div>
+            <div class="sg-swatch" style="background: var(--line-soft);"><strong>--line-soft</strong><span>accent .24</span></div>
+            <div class="sg-swatch" style="background: var(--selection);"><strong>--selection</strong><span>lime .24</span></div>
+            <div class="sg-swatch" style="background: var(--danger);"><strong>--danger</strong><span>#a12a2a</span></div>
+            <div class="sg-swatch" style="background: var(--stale);"><strong>--stale</strong><span>#cc3d2b</span></div>
+          </div>
+        </article>
+
+        <article class="sg-card">
+          <h2>Type & Shape</h2>
+          <p><code>body</code> uses Iowan Old Style, Palatino, Georgia serif. Extension pages now use the same brand type stack.</p>
+          <p><code>h1-h3</code> use <code>letter-spacing: -0.02em</code>. Buttons use compact control sizing; cards use <code>18px</code>; chips and badges use the pill radius.</p>
+          <p class="muted">Common spacing: page gutter <code>18px</code>, form/card gaps <code>18px</code>, mobile gutter <code>8px</code>.</p>
+        </article>
+
+        <article class="sg-card sg-card--full">
+          <h2>Font Size Scale</h2>
+          <p class="muted">Industry practice is to keep interface type on a small named scale. Four everyday sizes are enough for this app; the fifth is reserved for numeric emphasis and article text.</p>
+          <div class="type-scale">
+            <div class="type-row">
+              <div class="type-token">--font-xs / 9px</div>
+              <div class="type-sample--xs">Scheduled status</div>
+              <div class="muted">Badges, pills, table headers, metadata</div>
+            </div>
+            <div class="type-row">
+              <div class="type-token">--font-sm / 11px</div>
+              <div class="type-sample--sm">Save changes</div>
+              <div class="muted">Buttons, labels, dense controls</div>
+            </div>
+            <div class="type-row">
+              <div class="type-token">--font-md / 13px</div>
+              <div class="type-sample--md">Page subtitles and compact explanatory copy.</div>
+              <div class="muted">Subtitles, notes, panel copy</div>
+            </div>
+            <div class="type-row">
+              <div class="type-token">--font-lg / 15px</div>
+              <div class="type-sample--lg">Article text should feel calm and readable over longer passages.</div>
+              <div class="muted">Reader body text, feature copy</div>
+            </div>
+            <div class="type-row">
+              <div class="type-token">--font-xl / 18px</div>
+              <div class="type-sample--xl">42</div>
+              <div class="muted">Article text, stats, strong emphasis</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="sg-card">
+          <h2>Core Components</h2>
+          <div class="card hero-card">
+            <span class="eyebrow">Hero card</span>
+            <h3>Card, headings, muted copy</h3>
+            <p class="muted">Classes: <code>.card</code>, <code>.hero-card</code>, <code>.eyebrow</code>, <code>.muted</code>.</p>
+            <div class="actions-row">
+              <button>Primary</button>
+              <button class="button-secondary">Secondary</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="sg-card">
+          <h2>Inputs</h2>
+          <div class="form-demo">
+            <div class="form-demo__row">
+              <label for="demo-url">Text input</label>
+              <input id="demo-url" value="https://example.com/article" />
+            </div>
+            <div class="form-demo__row">
+              <label for="demo-select">Select</label>
+              <select id="demo-select"><option>Active</option><option>Paused</option></select>
+            </div>
+            <div class="form-demo__row form-demo__row--textarea">
+              <label for="demo-textarea">Textarea</label>
+              <textarea id="demo-textarea" rows="2">Shared post copy</textarea>
+            </div>
+          </div>
+        </article>
+
+        <article class="sg-card">
+          <h2>Status Styles</h2>
+          <div class="sg-pill-row">
+            <span class="status-pill">status-pill</span>
+            <span class="badge badge--compact badge--neutral">neutral</span>
+            <span class="badge badge--compact badge--success">success</span>
+            <span class="badge badge--compact badge--warning">warning</span>
+            <span class="badge badge--compact badge--danger">danger</span>
+          </div>
+          <p class="muted" style="margin-top: 10px;">Status typography is unified across pill and compact badges; variants only change color and padding.</p>
+        </article>
+
+        <article class="sg-card">
+          <h2>Reader Controls</h2>
+          <div class="toggle-group" aria-label="Reader controls">
+            <span class="toggle-chip is-selected">Split</span>
+            <span class="toggle-chip">Magazine</span>
+            <span class="toggle-chip">Grid</span>
+          </div>
+          <p class="muted" style="margin-top: 10px;">Classes: <code>.toggle-group</code>, <code>.toggle-chip</code>, <code>.is-selected</code>.</p>
+        </article>
+
+        <article class="sg-card sg-card--wide">
+          <h2>Tables & Empty States</h2>
+          <div class="table-shell">
+            <table>
+              <thead>
+                <tr><th>Class</th><th>Use</th><th>Visual choice</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><code>.table-shell</code></td><td>Feeds tables</td><td>Soft border, 16px radius, warm translucent fill</td></tr>
+                <tr><td><code>.empty-state</code></td><td>No results / no data</td><td>Dashed border, pale warm fill, 16px radius</td></tr>
+                <tr><td><code>.actions-row</code></td><td>Button groups</td><td>Flex row with wrapping and 10px gap</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="sg-card sg-card--full">
+          <h2>Article Example</h2>
+          <article class="article-example">
+            <div class="article-example__meta">
+              <span class="eyebrow">The Browser</span>
+              <span class="badge badge--compact badge--neutral">Reader</span>
+              <span class="muted">May 10, 2026 · 6 min read</span>
+            </div>
+            <h1>How small design systems stay coherent</h1>
+            <p class="article-example__dek">A representative article view showing headline scale, metadata, long-form body text, inline links, block quotes, and a compact contextual panel.</p>
+            <div class="article-example__body">
+              <p>Consistency starts with fewer choices. A product does not need dozens of text sizes or button shapes to feel polished; it needs a small set of decisions that repeat across screens.</p>
+              <p>In EchoTree, article text is intentionally larger than interface text. Controls stay compact, while the reading surface gets more breathing room and a longer line height.</p>
+              <h2>Use the scale by role</h2>
+              <p>The smallest size belongs to metadata and statuses. The small size belongs to controls. The medium size supports page structure. The large size carries sustained reading.</p>
+              <blockquote>When every component invents its own size, the interface starts to feel assembled instead of designed.</blockquote>
+              <p>That separation lets dense operational screens and relaxed reading screens coexist without fighting the same visual hierarchy.</p>
+            </div>
+            <div class="article-example__aside">
+              <strong>Compose preview</strong>
+              <p class="muted" style="margin: 6px 0 10px;">A compact sidebar panel should use smaller UI text while preserving the same colors, borders, and control sizing.</p>
+              <div class="actions-row">
+                <button>Schedule</button>
+                <button class="button-secondary">Share now</button>
+              </div>
+            </div>
+          </article>
+        </article>
+
+        <article class="sg-card">
+          <h2>Extension Alignment</h2>
+          <div class="sg-extension">
+            <p class="muted">Current tab URL</p>
+            <div class="url">https://example.com/article</div>
+            <div class="sg-pill-row" style="margin-top: 10px;">
+              <a class="button" href="#">Open Share</a>
+              <a class="button secondary" href="#">Settings</a>
+            </div>
+          </div>
+          <p class="sg-note" style="margin-top: 12px;">Extension HTML now mirrors the app palette, serif type, green primary action, tokenized borders, and muted green text.</p>
+        </article>
+
+        <article class="sg-card sg-card--full">
+          <h2>Class Families In Use</h2>
+          <ul class="sg-class-list">
+            <li><code>.muted</code> utility</li>
+            <li><code>.accent</code> utility</li>
+            <li><code>.card</code>, <code>.hero-card</code></li>
+            <li><code>.button-secondary</code></li>
+            <li><code>.page-header</code>, <code>.page-title</code>, <code>.page-subtitle</code></li>
+            <li><code>.actions-row</code>, <code>.stack</code>, <code>.form-stack</code></li>
+            <li><code>.checkbox-row</code>, <code>.inline-form</code></li>
+            <li><code>.table-shell</code>, <code>.empty-state</code></li>
+            <li><code>.eyebrow</code>, <code>.badge</code>, <code>.status-pill</code></li>
+            <li><code>.topbar</code>, <code>.brand</code>, <code>.brand__name</code></li>
+            <li><code>.nav</code>, <code>.nav-toggle</code>, <code>.nav__spacer</code></li>
+            <li><code>.reader-page</code>, <code>.reader-app</code>, <code>.reader-shell</code></li>
+            <li><code>.reader-panel</code>, <code>.reader-panel--nav</code>, <code>.reader-panel--stories</code>, <code>.reader-panel--main</code></li>
+            <li><code>.reader-topbar</code>, <code>.reader-notice-bar</code>, <code>.reader-stage</code></li>
+            <li><code>.toggle-group</code>, <code>.toggle-chip</code>, <code>.toggle-chip--layout-grid</code></li>
+            <li><code>.story-list</code>, <code>.story-item</code>, <code>.story-thumb</code>, <code>.story-summary</code></li>
+            <li><code>.site-group</code>, <code>.site-item</code>, <code>.site-favicon</code>, <code>.site-stale-dot</code></li>
+            <li><code>.feeds-bulk-card</code>, <code>.feeds-search</code>, <code>.feeds-table</code></li>
+            <li><code>.feed-folder-field</code>, <code>.feed-folder-chip</code>, <code>.stale-dot</code></li>
+            <li><code>.scheduled</code>, <code>.scheduled__dashboard</code>, <code>.scheduled__stat</code></li>
+            <li><code>.scheduled__list</code>, <code>.scheduled__item</code>, <code>.scheduled__badge</code></li>
+            <li><code>.history-page</code>, <code>.history-item</code>, <code>.history-sidebar</code></li>
+            <li><code>.share</code>, <code>.share__viewer</code>, <code>.share__iframe</code></li>
+            <li><code>.reader</code>, <code>.reader__content</code>, <code>.reader__sidebar</code></li>
+            <li><code>.url</code>, <code>.actions</code>, <code>.error</code>, <code>.secondary</code> extension-only</li>
+          </ul>
+        </article>
+
+        <article class="sg-card sg-card--full">
+          <h2>Consistency Notes</h2>
+          <div class="sg-grid">
+            <p class="sg-note sg-card--compact" style="grid-column: span 4;">Typography follows a compact scale: 9px for metadata/status, 11px for controls, 13px for supporting UI copy, and 15-18px for article text.</p>
+            <p class="sg-note sg-card--compact" style="grid-column: span 4;">Button styling is consistent and compact: native buttons and <code>.button</code> links share padding, radius, line height, and hover states.</p>
+            <p class="sg-note sg-card--compact" style="grid-column: span 4;">The extension UI follows the app palette and type. Its tokens are duplicated locally because extension pages are standalone documents.</p>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>
