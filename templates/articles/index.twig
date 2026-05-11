@@ -918,7 +918,7 @@
         gap: 5px;
         font-size: 11px;
       }
-      .reader-meta-card [data-reader-feed-host] {
+      .reader-meta-card [data-reader-article-datetime] {
         display: none;
       }
       .reader-meta-card .reader-header-band__actions {
@@ -1179,10 +1179,10 @@
                       {% endif %}
                       <span class="source-dot" data-reader-accent style="background: {{ selected.accent_color }};"></span>
                       <span data-reader-feed-name>{{ selected.feed_name }}</span>
-                      {% if selected.feed_host %}
-                        <span data-reader-feed-host>{{ selected.feed_host }}</span>
+                      {% if selected.published_at ?: selected.created_at %}
+                        <span data-reader-article-datetime>{{ selected.published_at ?: selected.created_at }}</span>
                       {% else %}
-                        <span data-reader-feed-host></span>
+                        <span data-reader-article-datetime></span>
                       {% endif %}
                     </div>
                   </div>
@@ -1510,7 +1510,7 @@
       var readerFavicon = document.querySelector('[data-reader-favicon]');
       var readerAccent = document.querySelector('[data-reader-accent]');
       var readerFeedName = document.querySelector('[data-reader-feed-name]');
-      var readerFeedHost = document.querySelector('[data-reader-feed-host]');
+      var readerArticleDatetime = document.querySelector('[data-reader-article-datetime]');
       var readerModeLinks = Array.prototype.slice.call(document.querySelectorAll('[data-reader-mode-link]'));
       var readerOpenLink = document.querySelector('[data-reader-open-link]');
       var readerPrevLink = document.querySelector('[data-reader-prev]');
@@ -1602,7 +1602,7 @@
         if (readerTitle) readerTitle.textContent = article.title;
         if (publishTitle) publishTitle.textContent = article.title;
         if (readerFeedName) readerFeedName.textContent = article.feed_name || '';
-        if (readerFeedHost) readerFeedHost.textContent = article.feed_host || '';
+        if (readerArticleDatetime) readerArticleDatetime.textContent = article.article_datetime || '';
         if (readerAccent) readerAccent.style.background = article.accent_color || '#84b316';
         if (readerFavicon) {
           if (article.favicon_url) {
@@ -1833,7 +1833,7 @@
       var readerFavicon = document.querySelector('[data-reader-favicon]');
       var readerAccent = document.querySelector('[data-reader-accent]');
       var readerFeedName = document.querySelector('[data-reader-feed-name]');
-      var readerFeedHost = document.querySelector('[data-reader-feed-host]');
+      var readerArticleDatetime = document.querySelector('[data-reader-article-datetime]');
       var readerModeLinks = Array.prototype.slice.call(document.querySelectorAll('[data-reader-mode-link]'));
       var readerOpenLink = document.querySelector('[data-reader-open-link]');
       var readerArchiveForm = document.querySelector('[data-reader-archive-form]');
@@ -1865,7 +1865,7 @@
             if (readerTitle) readerTitle.textContent = article.title;
             if (publishTitle) publishTitle.textContent = article.title;
             if (readerFeedName) readerFeedName.textContent = article.feed_name || '';
-            if (readerFeedHost) readerFeedHost.textContent = article.feed_host || '';
+            if (readerArticleDatetime) readerArticleDatetime.textContent = article.article_datetime || '';
             if (readerAccent) readerAccent.style.background = article.accent_color || '#84b316';
             if (readerFavicon) {
               if (article.favicon_url) {
