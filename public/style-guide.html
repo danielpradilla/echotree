@@ -36,7 +36,8 @@
         --font-sm: 11px;
         --font-md: 13px;
         --font-lg: 15px;
-        --font-xl: 18px;
+        --font-xl: 17px;
+        --font-xxl: 21px;
         --radius-card: 18px;
         --radius-panel: 16px;
         --radius-control: 10px;
@@ -48,6 +49,7 @@
       body {
         margin: 0;
         font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+        font-size: var(--font-md);
         background:
           radial-gradient(circle at top left, rgba(247, 203, 21, 0.12), transparent 24%),
           radial-gradient(circle at bottom right, rgba(90, 170, 149, 0.08), transparent 30%),
@@ -61,9 +63,9 @@
       }
       h1, h2, h3, p { margin-top: 0; }
       h1, h2, h3 { letter-spacing: -0.02em; }
-      h1 { margin-bottom: 4px; font-size: clamp(28px, 4vw, 44px); }
-      h2 { margin-bottom: 12px; font-size: 20px; }
-      h3 { margin-bottom: 8px; font-size: var(--font-md); }
+      h1 { margin-bottom: 4px; font-size: var(--font-xxl); line-height: 1.2; }
+      h2 { margin-bottom: 12px; font-size: var(--font-xl); }
+      h3 { margin-bottom: 8px; font-size: var(--font-lg); }
       p { line-height: 1.45; }
       a { color: var(--accent); text-underline-offset: 0.18em; }
       button, .button {
@@ -96,7 +98,7 @@
         background: var(--field);
         color: var(--ink);
       }
-      label { display: block; font-size: var(--font-sm); color: var(--muted); }
+      label { display: block; font-size: var(--font-md); color: var(--muted); }
       table { width: 100%; border-collapse: collapse; }
       th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
       th { color: var(--muted); font-size: var(--font-xs); text-transform: uppercase; letter-spacing: 0.08em; }
@@ -315,6 +317,10 @@
       .form-demo__row label {
         margin: 0;
       }
+      .form-demo__field-label {
+        color: var(--muted);
+        font-size: var(--font-md);
+      }
       .form-demo__row--textarea {
         align-items: start;
       }
@@ -326,29 +332,103 @@
       .form-demo textarea {
         width: 100%;
       }
+      .form-demo input[type="radio"],
+      .form-demo input[type="checkbox"] {
+        width: 12px;
+        height: 12px;
+        margin: 0;
+        padding: 0;
+        flex: 0 0 auto;
+      }
+      .form-demo__choice-stack {
+        display: grid;
+        gap: 8px;
+        justify-items: start;
+      }
+      .form-demo .checkbox-row {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--ink);
+        font-size: var(--font-md);
+        line-height: 1.2;
+      }
       .type-scale {
         display: grid;
-        gap: 10px;
+        gap: 0;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-panel);
+        overflow: hidden;
       }
       .type-row {
         display: grid;
-        grid-template-columns: 120px minmax(0, 1fr) 160px;
+        grid-template-columns: 140px 72px minmax(0, 1fr) 220px;
         gap: 12px;
-        align-items: baseline;
-        padding: 10px 0;
+        align-items: center;
+        padding: 10px 12px;
         border-bottom: 1px solid var(--line-soft);
       }
       .type-row:last-child { border-bottom: 0; }
+      .type-row--head {
+        background: var(--surface-panel-warm);
+        color: var(--muted);
+        font-size: var(--font-xs);
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
       .type-token {
         color: var(--muted);
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         font-size: var(--font-xs);
+      }
+      .type-size {
+        color: var(--muted);
+        font-size: var(--font-sm);
+      }
+      .type-use {
+        color: var(--muted);
+        font-size: var(--font-sm);
       }
       .type-sample--xs { font-size: var(--font-xs); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
       .type-sample--sm { font-size: var(--font-sm); }
       .type-sample--md { font-size: var(--font-md); line-height: 1.45; }
       .type-sample--lg { font-size: var(--font-lg); line-height: 1.65; }
       .type-sample--xl { font-size: var(--font-xl); font-weight: 700; line-height: 1.1; }
+      .type-row--section {
+        background: var(--surface-panel);
+      }
+      .type-row--section .type-token {
+        color: var(--ink);
+        font-family: inherit;
+        font-size: var(--font-sm);
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .type-sample--page-h1 {
+        font-size: var(--font-xxl);
+        font-weight: 700;
+        line-height: 1.2;
+      }
+      .type-sample--card-h2 {
+        font-size: var(--font-xl);
+        font-weight: 700;
+        line-height: 1.2;
+      }
+      .type-sample--card-h3 {
+        font-size: var(--font-md);
+        font-weight: 700;
+        line-height: 1.25;
+      }
+      .type-sample--eyebrow {
+        color: var(--muted);
+        font-size: var(--font-xs);
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        line-height: 1.2;
+        text-transform: uppercase;
+      }
       .article-example {
         max-width: 720px;
         margin: 0 auto;
@@ -363,12 +443,12 @@
       .article-example h1 {
         max-width: 16ch;
         margin: 0 0 12px;
-        font-size: clamp(32px, 5vw, 54px);
-        line-height: 0.96;
+        font-size: var(--font-xxl);
+        line-height: 1.2;
       }
       .article-example__dek {
         max-width: 58ch;
-        font-size: var(--font-lg);
+        font-size: var(--font-md);
         line-height: 1.5;
         color: var(--muted);
       }
@@ -376,7 +456,7 @@
         margin-top: 22px;
         padding-top: 20px;
         border-top: 1px solid var(--line-soft);
-        font-size: var(--font-lg);
+        font-size: var(--font-md);
         line-height: 1.72;
       }
       .article-example__body h2 {
@@ -403,6 +483,210 @@
         font-size: var(--font-sm);
         line-height: 1.45;
       }
+      .reader-example {
+        display: grid;
+        grid-template-columns: 210px 300px minmax(0, 1fr);
+        min-height: 560px;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius-panel);
+        overflow: hidden;
+        background: var(--surface-panel-strong);
+      }
+      .reader-panel {
+        min-width: 0;
+        min-height: 0;
+      }
+      .reader-panel--nav,
+      .reader-panel--stories {
+        padding: 6px;
+        background: rgba(245, 245, 239, 0.82);
+        border-right: 1px solid var(--line-soft);
+      }
+      .reader-panel--stories {
+        background: var(--surface-panel-strong);
+      }
+      .reader-panel--main {
+        padding: 8px;
+        background: var(--card);
+      }
+      .panel-kicker {
+        color: var(--muted);
+        font-size: var(--font-xs);
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .panel-head,
+      .story-toolbar {
+        padding: 4px 4px 8px;
+        border-bottom: 1px solid var(--line-soft);
+        margin-bottom: 4px;
+      }
+      .site-group + .site-group {
+        margin-top: 10px;
+      }
+      .site-group__header {
+        margin: 0 0 4px;
+        padding: 4px 6px;
+        color: var(--muted);
+        background: rgba(245, 245, 239, 0.95);
+        border-bottom: 1px solid var(--line-soft);
+        font-size: var(--font-xs);
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .site-item,
+      .story-item {
+        position: relative;
+        padding: 6px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .site-item {
+        border-bottom: 0;
+        margin-bottom: 1px;
+      }
+      .site-item.active,
+      .story-item.active {
+        background: var(--selection);
+        border-radius: var(--radius-compact);
+      }
+      .site-item.active::before {
+        content: "";
+        position: absolute;
+        top: 3px;
+        bottom: 3px;
+        left: 2px;
+        width: 3px;
+        border-radius: var(--radius-pill);
+        background: var(--site-accent, #84b316);
+      }
+      .site-link,
+      .story-card-link {
+        color: inherit;
+        text-decoration: none;
+      }
+      .site-link {
+        display: grid;
+        grid-template-columns: 16px minmax(0, 1fr);
+        gap: 6px;
+        align-items: start;
+      }
+      .site-title-row,
+      .story-title-row {
+        display: flex;
+        gap: 6px;
+        align-items: start;
+        justify-content: space-between;
+      }
+      .site-favicon {
+        width: 15px;
+        height: 15px;
+        border-radius: 4px;
+        background: rgba(90, 170, 149, 0.14);
+        border: 1px solid rgba(11, 93, 30, 0.08);
+        margin-top: 1px;
+      }
+      .site-link strong {
+        font-size: var(--font-md);
+        line-height: 1.2;
+      }
+      .site-link .muted {
+        font-size: var(--font-sm);
+        line-height: 1.25;
+      }
+      .count-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 24px;
+        padding: 1px 6px;
+        border-radius: var(--radius-pill);
+        background: rgba(90, 170, 149, 0.12);
+        color: var(--muted);
+        font-size: var(--font-xs);
+        font-weight: 700;
+      }
+      .story-card-link {
+        display: grid;
+        grid-template-columns: 84px minmax(0, 1fr);
+        gap: 8px;
+        align-items: start;
+      }
+      .story-thumb {
+        width: 84px;
+        aspect-ratio: 0.72;
+        border-radius: var(--radius-compact);
+        background:
+          linear-gradient(160deg, rgba(247, 203, 21, 0.24), rgba(90, 170, 149, 0.18)),
+          rgba(248, 249, 244, 0.96);
+        border: 1px solid rgba(11, 93, 30, 0.08);
+      }
+      .story-title-row strong {
+        font-size: var(--font-md);
+        line-height: 1.25;
+      }
+      .story-summary {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: var(--font-sm);
+        line-height: 1.35;
+      }
+      .reader-header-band {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 3px 0 6px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .article-source {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: var(--font-sm);
+      }
+      .source-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: var(--radius-pill);
+        background: var(--accent);
+      }
+      .reader-inline {
+        margin-top: 8px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-compact);
+        background: #fffaf2;
+        padding: 18px;
+      }
+      .reader-inline__body {
+        max-width: 620px;
+        margin: 0 auto;
+        color: #1e1a16;
+        font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+        font-size: var(--font-md);
+        line-height: 1.8;
+      }
+      .reader-inline__body h1,
+      .reader-inline__body h2,
+      .reader-inline__body h3 {
+        color: #1e1a16;
+        line-height: 1.25;
+      }
+      .reader-inline__body h1 {
+        margin: 0 0 12px;
+        font-size: var(--font-xxl);
+      }
+      .reader-inline__body h2 {
+        margin: 24px 0 8px;
+        font-size: var(--font-xl);
+      }
+      .reader-inline__body p {
+        margin: 0 0 16px;
+      }
 
       @media (max-width: 880px) {
         main { padding: 10px; }
@@ -410,6 +694,10 @@
         .sg-card, .sg-card--wide { grid-column: 1 / -1; }
         .sg-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .type-row { grid-template-columns: 1fr; gap: 4px; }
+        .type-row--head { display: none; }
+        .reader-example { grid-template-columns: 1fr; }
+        .reader-panel--nav,
+        .reader-panel--stories { border-right: 0; border-bottom: 1px solid var(--line-soft); }
       }
     </style>
   </head>
@@ -455,32 +743,79 @@
 
         <article class="sg-card sg-card--full">
           <h2>Font Size Scale</h2>
-          <p class="muted">Industry practice is to keep interface type on a small named scale. Four everyday sizes are enough for this app; the fifth is reserved for numeric emphasis and article text.</p>
+          <p class="muted">Body and control text use the compact token scale. Headings use the same system: <code>h1</code> uses <code>--font-xxl</code>, <code>h2</code> uses <code>--font-xl</code>, and <code>h3</code> uses <code>--font-lg</code>.</p>
           <div class="type-scale">
+            <div class="type-row type-row--head">
+              <div>Token</div>
+              <div>Size</div>
+              <div>Sample</div>
+              <div>Used for</div>
+            </div>
             <div class="type-row">
-              <div class="type-token">--font-xs / 9px</div>
+              <div class="type-token">--font-xs</div>
+              <div class="type-size">9px</div>
               <div class="type-sample--xs">Scheduled status</div>
-              <div class="muted">Badges, pills, table headers, metadata</div>
+              <div class="type-use">Badges, pills, table headers, metadata</div>
             </div>
             <div class="type-row">
-              <div class="type-token">--font-sm / 11px</div>
+              <div class="type-token">--font-sm</div>
+              <div class="type-size">11px</div>
               <div class="type-sample--sm">Save changes</div>
-              <div class="muted">Buttons, labels, dense controls</div>
+              <div class="type-use">Buttons, labels, dense controls</div>
             </div>
             <div class="type-row">
-              <div class="type-token">--font-md / 13px</div>
-              <div class="type-sample--md">Page subtitles and compact explanatory copy.</div>
-              <div class="muted">Subtitles, notes, panel copy</div>
+              <div class="type-token">--font-md</div>
+              <div class="type-size">13px</div>
+              <div class="type-sample--md">Article text and default interface copy.</div>
+              <div class="type-use">Default body text, article text, subtitles, notes</div>
             </div>
             <div class="type-row">
-              <div class="type-token">--font-lg / 15px</div>
-              <div class="type-sample--lg">Article text should feel calm and readable over longer passages.</div>
-              <div class="muted">Reader body text, feature copy</div>
+              <div class="type-token">--font-lg</div>
+              <div class="type-size">15px</div>
+              <div class="type-sample--lg">Small heading and lead emphasis.</div>
+              <div class="type-use">h3, lead copy, larger UI emphasis</div>
             </div>
             <div class="type-row">
-              <div class="type-token">--font-xl / 18px</div>
+              <div class="type-token">--font-xl</div>
+              <div class="type-size">17px</div>
               <div class="type-sample--xl">42</div>
-              <div class="muted">Article text, stats, strong emphasis</div>
+              <div class="type-use">Article text, stats, strong emphasis</div>
+            </div>
+            <div class="type-row">
+              <div class="type-token">--font-xxl</div>
+              <div class="type-size">21px</div>
+              <div class="type-sample--page-h1">Page title</div>
+              <div class="type-use">Top-level page and article headings</div>
+            </div>
+            <div class="type-row type-row--section">
+              <div class="type-token">Heading styles</div>
+              <div></div>
+              <div></div>
+              <div></div>
+            </div>
+            <div class="type-row">
+              <div class="type-token">h1</div>
+              <div class="type-size">21px</div>
+              <div class="type-sample--page-h1">Article headline</div>
+              <div class="type-use"><code>--font-xxl</code>; selected article title in the reader body</div>
+            </div>
+            <div class="type-row">
+              <div class="type-token">h2</div>
+              <div class="type-size">17px</div>
+              <div class="type-sample--card-h2">Section heading</div>
+              <div class="type-use"><code>--font-xl</code>; card headings and article subheads</div>
+            </div>
+            <div class="type-row">
+              <div class="type-token">h3</div>
+              <div class="type-size">15px</div>
+              <div class="type-sample--card-h3">Panel heading</div>
+              <div class="type-use"><code>--font-lg</code>; compact card and sidebar headings</div>
+            </div>
+            <div class="type-row">
+              <div class="type-token">Eyebrow</div>
+              <div class="type-size">9px</div>
+              <div class="type-sample--eyebrow">Metadata label</div>
+              <div class="type-use">Kickers, labels, compact metadata</div>
             </div>
           </div>
         </article>
@@ -508,6 +843,13 @@
             <div class="form-demo__row">
               <label for="demo-select">Select</label>
               <select id="demo-select"><option>Active</option><option>Paused</option></select>
+            </div>
+            <div class="form-demo__row">
+              <span class="form-demo__field-label">Radio</span>
+              <div class="form-demo__choice-stack">
+                <label class="checkbox-row"><input type="radio" name="demo-mode" checked /> Extracted</label>
+                <label class="checkbox-row"><input type="radio" name="demo-mode" /> Original</label>
+              </div>
             </div>
             <div class="form-demo__row form-demo__row--textarea">
               <label for="demo-textarea">Textarea</label>
@@ -555,32 +897,132 @@
         </article>
 
         <article class="sg-card sg-card--full">
-          <h2>Article Example</h2>
-          <article class="article-example">
-            <div class="article-example__meta">
-              <span class="eyebrow">The Browser</span>
-              <span class="badge badge--compact badge--neutral">Reader</span>
-              <span class="muted">May 10, 2026 · 6 min read</span>
-            </div>
-            <h1>How small design systems stay coherent</h1>
-            <p class="article-example__dek">A representative article view showing headline scale, metadata, long-form body text, inline links, block quotes, and a compact contextual panel.</p>
-            <div class="article-example__body">
-              <p>Consistency starts with fewer choices. A product does not need dozens of text sizes or button shapes to feel polished; it needs a small set of decisions that repeat across screens.</p>
-              <p>In EchoTree, article text is intentionally larger than interface text. Controls stay compact, while the reading surface gets more breathing room and a longer line height.</p>
-              <h2>Use the scale by role</h2>
-              <p>The smallest size belongs to metadata and statuses. The small size belongs to controls. The medium size supports page structure. The large size carries sustained reading.</p>
-              <blockquote>When every component invents its own size, the interface starts to feel assembled instead of designed.</blockquote>
-              <p>That separation lets dense operational screens and relaxed reading screens coexist without fighting the same visual hierarchy.</p>
-            </div>
-            <div class="article-example__aside">
-              <strong>Compose preview</strong>
-              <p class="muted" style="margin: 6px 0 10px;">A compact sidebar panel should use smaller UI text while preserving the same colors, borders, and control sizing.</p>
-              <div class="actions-row">
-                <button>Schedule</button>
-                <button class="button-secondary">Share now</button>
+          <h2>Reader Example</h2>
+          <div class="reader-example">
+            <div class="reader-panel reader-panel--nav">
+              <div class="panel-head">
+                <div class="panel-kicker">Sites</div>
+              </div>
+              <div class="site-group">
+                <div class="site-item active" style="--site-accent: #84b316;">
+                  <a class="site-link" href="#">
+                    <span class="site-favicon" aria-hidden="true"></span>
+                    <div>
+                      <div class="site-title-row">
+                        <strong>All stories</strong>
+                        <span class="count-pill">42</span>
+                      </div>
+                      <div class="muted">Global river across every active site.</div>
+                    </div>
+                  </a>
+                </div>
+              </div>
+              <div class="site-group">
+                <div class="site-group__header">Design</div>
+                <div class="site-item">
+                  <a class="site-link" href="#">
+                    <span class="site-favicon" aria-hidden="true"></span>
+                    <div>
+                      <div class="site-title-row">
+                        <strong>The Browser</strong>
+                        <span class="count-pill">8</span>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+                <div class="site-item">
+                  <a class="site-link" href="#">
+                    <span class="site-favicon" aria-hidden="true"></span>
+                    <div>
+                      <div class="site-title-row">
+                        <strong>Systems Weekly</strong>
+                        <span class="count-pill">3</span>
+                      </div>
+                      <div class="muted">Paused</div>
+                    </div>
+                  </a>
+                </div>
+              </div>
+              <div class="site-group">
+                <div class="site-group__header">Technology</div>
+                <div class="site-item">
+                  <a class="site-link" href="#">
+                    <span class="site-favicon" aria-hidden="true"></span>
+                    <div>
+                      <div class="site-title-row">
+                        <strong>Protocol Notes</strong>
+                        <span class="count-pill">12</span>
+                      </div>
+                    </div>
+                  </a>
+                </div>
               </div>
             </div>
-          </article>
+
+            <div class="reader-panel reader-panel--stories">
+              <div class="story-toolbar reader-header-band">
+                <div>
+                  <div class="panel-kicker">All stories</div>
+                </div>
+                <button class="button-secondary">Archive all</button>
+              </div>
+              <div class="story-list">
+                <div class="story-item active" style="border-color: #84b316;">
+                  <a class="story-card-link" href="#">
+                    <div class="story-thumb"></div>
+                    <div class="story-content">
+                      <div class="story-title-row">
+                        <strong>How small design systems stay coherent</strong>
+                        <span class="count-pill">new</span>
+                      </div>
+                      <div class="muted">The Browser · May 10, 2026</div>
+                      <div class="story-summary">Consistency starts with fewer choices. A product does not need dozens of text sizes or button shapes to feel polished.</div>
+                    </div>
+                  </a>
+                </div>
+                <div class="story-item">
+                  <a class="story-card-link" href="#">
+                    <div class="story-thumb"></div>
+                    <div class="story-content">
+                      <div class="story-title-row">
+                        <strong>When dense screens need calmer hierarchy</strong>
+                      </div>
+                      <div class="muted">Systems Weekly · May 9, 2026</div>
+                      <div class="story-summary">Operational views work best when metadata, actions, and reading content each have a distinct visual role.</div>
+                    </div>
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <div class="reader-panel reader-panel--main">
+              <div class="reader-header-band">
+                <div>
+                  <div class="eyebrow">How small design systems stay coherent</div>
+                  <div class="article-source">
+                    <span class="site-favicon" aria-hidden="true"></span>
+                    <span class="source-dot"></span>
+                    <span>The Browser</span>
+                    <span>example.com</span>
+                  </div>
+                </div>
+                <div class="actions-row">
+                  <a class="reader-mode-link button-secondary is-active" href="#">Extracted</a>
+                  <a class="reader-mode-link button-secondary" href="#">Original</a>
+                  <button class="button-secondary">Archive</button>
+                </div>
+              </div>
+              <div class="reader-inline">
+                <div class="reader-inline__body">
+                  <h1>How small design systems stay coherent</h1>
+                  <p>Consistency starts with fewer choices. A product does not need dozens of text sizes or button shapes to feel polished; it needs a small set of decisions that repeat across screens.</p>
+                  <p>In EchoTree, article text uses the default medium size. Controls stay compact, while the reading surface gets more breathing room through line height and spacing.</p>
+                  <h2>Use the scale by role</h2>
+                  <p>The smallest size belongs to metadata and statuses. The small size belongs to controls. The medium size supports page structure. The large size carries sustained reading.</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </article>
 
         <article class="sg-card">
@@ -630,7 +1072,7 @@
         <article class="sg-card sg-card--full">
           <h2>Consistency Notes</h2>
           <div class="sg-grid">
-            <p class="sg-note sg-card--compact" style="grid-column: span 4;">Typography follows a compact scale: 9px for metadata/status, 11px for controls, 13px for supporting UI copy, and 15-18px for article text.</p>
+            <p class="sg-note sg-card--compact" style="grid-column: span 4;">Typography follows a compact scale: 9px for metadata/status, 11px for controls, 13px for default UI and article text, 15-17px for larger UI and headings, and 21px for h1.</p>
             <p class="sg-note sg-card--compact" style="grid-column: span 4;">Button styling is consistent and compact: native buttons and <code>.button</code> links share padding, radius, line height, and hover states.</p>
             <p class="sg-note sg-card--compact" style="grid-column: span 4;">The extension UI follows the app palette and type. Its tokens are duplicated locally because extension pages are standalone documents.</p>
           </div>
