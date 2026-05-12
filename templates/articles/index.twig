@@ -523,6 +523,80 @@
       padding-left: 10px;
       align-self: start;
     }
+    .publish-form {
+      gap: 14px;
+      padding-top: 10px;
+    }
+    .publish-title {
+      display: none;
+    }
+    .publish-field {
+      display: grid;
+      gap: 7px;
+      margin: 0;
+      color: var(--muted);
+    }
+    .publish-field input,
+    .publish-field select,
+    .publish-field textarea {
+      width: 100%;
+      margin-top: 0;
+    }
+    .publish-field textarea {
+      min-height: 86px;
+    }
+    .publish-meta {
+      margin-top: -4px;
+      font-size: 12px;
+    }
+    .publish-generate {
+      display: grid;
+      gap: 7px;
+    }
+    .publish-generate__controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+    }
+    .publish-generate__controls select,
+    .publish-generate__controls button {
+      min-height: 36px;
+    }
+    .publish-generate__status {
+      min-height: 16px;
+      font-size: 12px;
+    }
+    .publish-accounts {
+      margin: 2px 0 0;
+      padding: 0;
+      border: 0;
+    }
+    .publish-accounts legend {
+      margin-bottom: 9px;
+      padding: 0;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .publish-account-list {
+      gap: 9px;
+    }
+    .publish-account {
+      display: grid;
+      grid-template-columns: 16px minmax(0, 1fr);
+      align-items: start;
+      gap: 8px;
+      line-height: 1.3;
+    }
+    .publish-account input {
+      width: 14px;
+      height: 14px;
+      margin: 2px 0 0;
+    }
+    .publish-actions {
+      gap: 10px;
+      margin-top: 2px;
+    }
     .inbox__iframe {
       width: 100%;
       height: auto;
@@ -599,8 +673,8 @@
       justify-content: space-between;
       align-items: center;
       gap: 8px;
-      min-height: 44px;
-      padding: 3px 0 6px;
+      min-height: 42px;
+      padding: 4px 0 6px;
       border-bottom: 1px solid var(--line-soft);
     }
     .reader-header-band__main {
@@ -625,6 +699,14 @@
       top: 0;
       z-index: 2;
       background: rgba(255, 255, 255, 0.94);
+    }
+    .story-toolbar,
+    .reader-stage__compose .reader-header-band {
+      align-items: flex-start;
+    }
+    .story-toolbar .reader-header-band__main,
+    .reader-stage__compose .reader-header-band__main {
+      justify-content: flex-start;
     }
     .inbox__meta {
       display: flex;
@@ -832,10 +914,16 @@
     .story-toolbar .panel-kicker,
     .reader-meta-card .eyebrow,
     .reader-stage__compose .eyebrow {
-      margin-bottom: 0;
+      margin: 0;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      line-height: 1.25;
     }
     .reader-meta-card .article-source {
       margin-top: 0;
+      font-size: 11px;
+      line-height: 1.25;
     }
     @media (min-width: 901px) and (max-width: 1180px) {
       .reader-panel--main {
@@ -1283,53 +1371,53 @@
                 <div class="reader-header-band">
                   <div class="reader-header-band__main">
                     <span class="eyebrow">Publish</span>
-                    <h2 class="column-heading__title" style="margin-top: 2px;" data-publish-title>{{ selected.title }}</h2>
+                    <span class="publish-title" data-publish-title>{{ selected.title }}</span>
                   </div>
                 </div>
-                <form method="post" action="{{ base_path }}/posts" class="form-stack">
+                <form method="post" action="{{ base_path }}/posts" class="form-stack publish-form">
                   <input type="hidden" name="_csrf" value="{{ csrf }}" />
                   <input type="hidden" name="_submit_token" value="{{ submit_token }}" />
                   <input type="hidden" name="article_id" value="{{ selected.id }}" data-publish-article-id />
                   <input type="hidden" name="return_to" value="{{ base_path }}/articles?{% if active_feed_id %}feed_id={{ active_feed_id }}&{% endif %}selected={{ selected.id }}&mode={{ mode }}&density={{ density }}&layout={{ layout }}" data-publish-return-to />
-                  <label>
-                    Comment
-                    <textarea id="article-comment" name="comment" rows="4" style="width: 100%;"></textarea>
+                  <label class="publish-field">
+                    <span>Comment</span>
+                    <textarea id="article-comment" name="comment" rows="4"></textarea>
                   </label>
-                  <div class="muted" style="font-size: 12px;">
+                  <div class="muted publish-meta">
                     Length: <span id="article-comment-length">0</span>
                   </div>
-                  <div style="margin-top: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                    <label>
-                      Generate
+                  <div class="publish-generate">
+                    <div class="publish-field">Generate</div>
+                    <div class="publish-generate__controls">
                       <select id="article-generate-mode">
                         <option value="comment">Comment</option>
                         <option value="summary">Summary</option>
                         <option value="phrase">Impactful phrase</option>
                       </select>
-                    </label>
-                    <button type="button" data-generate-comment data-article-id="{{ selected.id }}">Generate</button>
-                    <span class="muted" data-comment-status></span>
+                      <button type="button" data-generate-comment data-article-id="{{ selected.id }}">Generate</button>
+                    </div>
+                    <span class="muted publish-generate__status" data-comment-status></span>
                   </div>
-                  <label>
-                    Schedule ({{ schedule_timezone }})
+                  <label class="publish-field">
+                    <span>Schedule ({{ schedule_timezone }})</span>
                     <input id="article-schedule" type="datetime-local" name="scheduled_at" value="{{ default_schedule_input }}" />
                   </label>
-                  <fieldset>
+                  <fieldset class="publish-accounts">
                     <legend>Accounts</legend>
                     {% if accounts|length == 0 %}
                       <p class="muted">No active accounts yet.</p>
                     {% else %}
-                      <div class="stack" style="gap: 10px;">
+                      <div class="stack publish-account-list">
                       {% for account in accounts %}
-                        <label class="checkbox-row">
+                        <label class="publish-account">
                           <input type="checkbox" name="account_ids[]" value="{{ account.id }}" />
-                          {{ account.platform }} · {{ account.display_name }} ({{ account.handle }})
+                          <span>{{ account.platform }} · {{ account.display_name }} ({{ account.handle }})</span>
                         </label>
                       {% endfor %}
                       </div>
                     {% endif %}
                   </fieldset>
-                  <div class="actions-row">
+                  <div class="actions-row publish-actions">
                     <button type="submit" name="action" value="schedule">Schedule</button>
                     <button type="submit" name="action" value="now" class="button-secondary">Share now</button>
                   </div>
