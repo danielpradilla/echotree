@@ -636,11 +636,61 @@
     .inbox__meta .actions-row {
       align-items: center;
     }
+    .reader-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+      width: 100%;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 11px;
+    }
+    .reader-toolbar__nav,
+    .reader-toolbar__actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      flex: 0 0 auto;
+    }
+    .reader-icon-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--ink);
+      text-decoration: none;
+      font-size: 18px;
+      line-height: 1;
+      transition: background 120ms ease, transform 120ms ease, border-color 120ms ease, color 120ms ease;
+    }
+    .reader-icon-button:hover {
+      background: rgba(246, 251, 243, 0.92);
+      border-color: var(--accent);
+      color: var(--ink);
+      transform: translateY(-1px);
+    }
+    .reader-icon-button.is-disabled {
+      opacity: 0.42;
+      pointer-events: none;
+    }
+    .reader-icon-button--external {
+      font-size: 15px;
+    }
     .reader-mode-links {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
+      gap: 2px;
+      flex: 0 1 auto;
+      min-width: 0;
+      padding: 2px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.72);
     }
     .inbox__meta .actions-row {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -655,9 +705,10 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 5px 8px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-pill);
+      min-height: 26px;
+      padding: 5px 10px;
+      border: 0;
+      border-radius: 6px;
       background: transparent;
       color: var(--ink);
       text-decoration: none;
@@ -668,14 +719,12 @@
     }
     .reader-mode-link:hover {
       background: rgba(246, 251, 243, 0.92);
-      border-color: var(--accent);
       color: var(--ink);
       transform: translateY(-1px);
     }
     .reader-mode-link.is-active {
       color: var(--on-accent);
       background: var(--accent);
-      border-color: var(--accent);
       font-weight: 600;
     }
     .reader-mode-link.is-disabled {
@@ -760,21 +809,15 @@
       justify-content: start;
       width: 100%;
     }
-    .reader-meta-card .inbox__meta .actions-row {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+    .reader-meta-card .reader-toolbar {
       justify-content: start;
-      gap: 5px;
-      width: 100%;
     }
-    .reader-meta-card .reader-mode-links,
-    .reader-meta-card .inline-form {
-      display: contents;
+    .reader-meta-card .reader-mode-links {
+      flex: 1 1 260px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
-    .reader-meta-card .reader-mode-link,
-    .reader-meta-card button {
-      min-height: 28px;
-      width: 100%;
+    .reader-meta-card .reader-mode-link {
       white-space: nowrap;
     }
     .reader-stage__compose .card {
@@ -929,17 +972,20 @@
       .inbox__meta .actions-row {
         gap: 4px;
       }
-      .reader-meta-card .inbox__meta .actions-row {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        align-items: stretch;
-        width: 100%;
+      .reader-meta-card .reader-toolbar {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 6px;
+      }
+      .reader-meta-card .reader-mode-links {
+        flex-basis: auto;
+      }
+      .reader-icon-button {
+        width: 30px;
+        height: 30px;
       }
       .reader-mode-link {
-        padding: 5px 7px;
-      }
-      .reader-meta-card .reader-mode-link,
-      .reader-meta-card button {
-        width: 100%;
         min-height: 30px;
         padding: 5px 4px;
         font-size: 12px;
@@ -1187,34 +1233,34 @@
                     </div>
                   </div>
                   <div class="inbox__meta reader-header-band__actions">
-                    <div class="actions-row">
-                    <a href="#" class="reader-mode-link button-secondary reader-step-link is-disabled" data-reader-prev aria-disabled="true">Previous</a>
-                    <a href="#" class="reader-mode-link button-secondary reader-step-link is-disabled" data-reader-next aria-disabled="true">Next</a>
-                    <span class="reader-mode-links">
-                      <a
-                        href="{{ selected.mode_urls.feed|default(base_path ~ '/articles?' ~ (active_feed_id ? 'feed_id=' ~ active_feed_id ~ '&' : '') ~ 'selected=' ~ selected.id ~ '&mode=feed&density=' ~ density ~ '&layout=' ~ layout) }}"
-                        class="reader-mode-link button-secondary{% if mode == 'feed' %} is-active{% endif %}{% if selected.available_modes.feed is defined and not selected.available_modes.feed %} is-disabled{% endif %}"
-                        data-reader-mode-link
-                        data-mode-link="feed"
-                      >Feed</a>
-                      <a
-                        href="{{ selected.mode_urls.extracted|default(base_path ~ '/articles?' ~ (active_feed_id ? 'feed_id=' ~ active_feed_id ~ '&' : '') ~ 'selected=' ~ selected.id ~ '&mode=extracted&density=' ~ density ~ '&layout=' ~ layout) }}"
-                        class="reader-mode-link button-secondary{% if mode == 'extracted' %} is-active{% endif %}{% if selected.available_modes.extracted is defined and not selected.available_modes.extracted %} is-disabled{% endif %}"
-                        data-reader-mode-link
-                        data-mode-link="extracted"
-                      >Extracted</a>
-                      <a
-                        href="{{ selected.mode_urls.original|default(base_path ~ '/articles?' ~ (active_feed_id ? 'feed_id=' ~ active_feed_id ~ '&' : '') ~ 'selected=' ~ selected.id ~ '&mode=original&density=' ~ density ~ '&layout=' ~ layout) }}"
-                        class="reader-mode-link button-secondary{% if mode == 'original' %} is-active{% endif %}"
-                        data-reader-mode-link
-                        data-mode-link="original"
-                      >Original</a>
-                    </span>
-                    <a href="{{ selected.url }}" target="_blank" rel="noopener" class="reader-mode-link button-secondary" data-reader-open-link>Open</a>
-                    <form method="post" action="{{ base_path }}/articles/{{ selected.id }}/archive" class="inline-form" data-reader-archive-form>
-                      <input type="hidden" name="_csrf" value="{{ csrf }}" />
-                      <button type="submit" class="button-secondary">Archive</button>
-                    </form>
+                    <div class="reader-toolbar" aria-label="Article controls">
+                      <div class="reader-toolbar__nav" aria-label="Article navigation">
+                        <a href="#" class="reader-icon-button reader-step-link is-disabled" data-reader-prev aria-disabled="true" aria-label="Previous article" title="Previous article"><span aria-hidden="true">&lsaquo;</span></a>
+                        <a href="#" class="reader-icon-button reader-step-link is-disabled" data-reader-next aria-disabled="true" aria-label="Next article" title="Next article"><span aria-hidden="true">&rsaquo;</span></a>
+                      </div>
+                      <span class="reader-mode-links" role="group" aria-label="Reader view">
+                        <a
+                          href="{{ selected.mode_urls.feed|default(base_path ~ '/articles?' ~ (active_feed_id ? 'feed_id=' ~ active_feed_id ~ '&' : '') ~ 'selected=' ~ selected.id ~ '&mode=feed&density=' ~ density ~ '&layout=' ~ layout) }}"
+                          class="reader-mode-link{% if mode == 'feed' %} is-active{% endif %}{% if selected.available_modes.feed is defined and not selected.available_modes.feed %} is-disabled{% endif %}"
+                          data-reader-mode-link
+                          data-mode-link="feed"
+                        >Feed</a>
+                        <a
+                          href="{{ selected.mode_urls.extracted|default(base_path ~ '/articles?' ~ (active_feed_id ? 'feed_id=' ~ active_feed_id ~ '&' : '') ~ 'selected=' ~ selected.id ~ '&mode=extracted&density=' ~ density ~ '&layout=' ~ layout) }}"
+                          class="reader-mode-link{% if mode == 'extracted' %} is-active{% endif %}{% if selected.available_modes.extracted is defined and not selected.available_modes.extracted %} is-disabled{% endif %}"
+                          data-reader-mode-link
+                          data-mode-link="extracted"
+                        >Extracted</a>
+                        <a
+                          href="{{ selected.mode_urls.original|default(base_path ~ '/articles?' ~ (active_feed_id ? 'feed_id=' ~ active_feed_id ~ '&' : '') ~ 'selected=' ~ selected.id ~ '&mode=original&density=' ~ density ~ '&layout=' ~ layout) }}"
+                          class="reader-mode-link{% if mode == 'original' %} is-active{% endif %}"
+                          data-reader-mode-link
+                          data-mode-link="original"
+                        >Original</a>
+                      </span>
+                      <div class="reader-toolbar__actions">
+                        <a href="{{ selected.url }}" target="_blank" rel="noopener" class="reader-icon-button reader-icon-button--external" data-reader-open-link aria-label="Open original in new tab" title="Open original in new tab"><span aria-hidden="true">&#8599;</span></a>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1515,7 +1561,6 @@
       var readerOpenLink = document.querySelector('[data-reader-open-link]');
       var readerPrevLink = document.querySelector('[data-reader-prev]');
       var readerNextLink = document.querySelector('[data-reader-next]');
-      var readerArchiveForm = document.querySelector('[data-reader-archive-form]');
       var readerOriginalShell = document.querySelector('[data-reader-original-shell]');
       var readerIframe = document.querySelector('[data-reader-iframe]');
       var readerInline = document.querySelector('[data-reader-inline]');
@@ -1615,7 +1660,6 @@
         }
         applyModeLinks(article);
         if (readerOpenLink) readerOpenLink.href = article.url;
-        if (readerArchiveForm) readerArchiveForm.action = article.archive_url;
         if (readerOriginalShell && readerInline && readerInlineBody) {
           if (article.mode === 'original') {
             var activeIframe = ensureReaderIframe(article.title);
@@ -1836,7 +1880,6 @@
       var readerArticleDatetime = document.querySelector('[data-reader-article-datetime]');
       var readerModeLinks = Array.prototype.slice.call(document.querySelectorAll('[data-reader-mode-link]'));
       var readerOpenLink = document.querySelector('[data-reader-open-link]');
-      var readerArchiveForm = document.querySelector('[data-reader-archive-form]');
       var readerOriginalShell = document.querySelector('[data-reader-original-shell]');
       var readerIframe = document.querySelector('[data-reader-iframe]');
       var readerInline = document.querySelector('[data-reader-inline]');
@@ -1886,7 +1929,6 @@
               link.classList.toggle('is-disabled', !isAvailable);
             });
             if (readerOpenLink) readerOpenLink.href = article.url;
-            if (readerArchiveForm) readerArchiveForm.action = article.archive_url;
             if (readerOriginalShell && readerInline && readerInlineBody) {
               if (article.mode === 'original') {
                 var activeIframe = readerOriginalShell.querySelector('[data-reader-iframe]');
